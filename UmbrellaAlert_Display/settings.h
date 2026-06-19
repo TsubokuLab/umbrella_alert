@@ -135,8 +135,7 @@ void handleSettingsTouch(int x, int y) {
 void selectNextCity() {
     nextCityIndex = (nextCityIndex + 1) % CITY_COUNT;
     showSettingsScreen();  // 画面を再描画
-    M5.Speaker.tone(3000, 100);
-    delay(500);
+    M5.Speaker.tone(3000, 100);  // 非ブロッキング。delayは入れない（フリーズ防止）
 }
 
 void setCurrentCity() {

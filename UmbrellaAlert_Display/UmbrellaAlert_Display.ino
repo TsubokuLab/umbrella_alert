@@ -331,9 +331,9 @@ void loop() {
         updateLEDs();
     }
 
-    // タッチスクリーン処理
+    // タッチスクリーン処理（エッジ検出: 1タップ＝1動作。押しっぱなしでの連打を防ぐ）
     auto touch = M5.Touch.getDetail();
-    if (touch.isPressed()) {
+    if (touch.wasPressed()) {
         int touchX = touch.x;
         int touchY = touch.y;
         if( touchY > height - 40 && touchY < height){
@@ -406,8 +406,7 @@ void changeDeviceMode(DeviceMode _mode, bool _isBeep){
     deviceMode = _mode;
     drawDisplay();
     if(_isBeep){
-        M5.Speaker.tone(3000, 100);
-        delay(500);
+        M5.Speaker.tone(3000, 100);  // 非ブロッキング。delayは入れない（フリーズ防止）
     }
 }
 
@@ -435,8 +434,7 @@ void changeScreenMode(ScreenMode _mode, bool _isBeep){
     currentScreen = _mode;
     drawDisplay();
     if(_isBeep){
-        M5.Speaker.tone(3000, 100);
-        delay(500);
+        M5.Speaker.tone(3000, 100);  // 非ブロッキング。delayは入れない（フリーズ防止）
     }
 }
 
