@@ -23,17 +23,18 @@ enum CityIndex {
 struct CityInfo {
     const char* id;   // OpenWeatherMap ID
     const char* name; // 表示名
+    long tzOffset;    // タイムゾーン補正(秒)。例: 日本=+9時間=32400
 };
 
-// 都市リスト
+// 都市リスト（将来Web設定から土地を選ぶ際の唯一の情報源。天気IDとTZをまとめて保持）
 const CityInfo CITIES[CITY_COUNT] = {
-    // {CITY_AUTO, "自動検出"},
-    {CITY_SAPPORO, "札幌"},
-    {CITY_TOKYO, "東京"},
-    {CITY_NAGOYA, "名古屋"},
-    {CITY_OSAKA, "大阪"},
-    {CITY_FUKUOKA, "福岡"},
-    {CITY_NAHA, "那覇"}
+    // {CITY_AUTO, "自動検出", DEFAULT_TIMEZONE_OFFSET},
+    {CITY_SAPPORO, "札幌",   9 * 3600},
+    {CITY_TOKYO,   "東京",   9 * 3600},
+    {CITY_NAGOYA,  "名古屋", 9 * 3600},
+    {CITY_OSAKA,   "大阪",   9 * 3600},
+    {CITY_FUKUOKA, "福岡",   9 * 3600},
+    {CITY_NAHA,    "那覇",   9 * 3600}
 };
 
 // 現在選択されている都市インデックス
@@ -65,6 +66,20 @@ void saveSettings() {
 // 現在の都市IDを取得
 const char* getCurrentCityId() {
     return CITIES[currentCityIndex].id;
+}
+
+// 現在の都市のタイムゾーン補正(秒)を取得
+long getCurrentTimezoneOffset() {
+    return CITIES[currentCityIndex].tzOffset;
+}
+
+// 都市をインデックスで確定・保存する（UI/Webどちらからでも使える共通セッター）
+// 将来、WiFi設定画面のプルダウンから土地を選ぶ際にこの関数を呼ぶ想定。
+void setCityByIndex(int idx) {
+    if (idx < 0 || idx >= CITY_COUNT) return;
+    nextCityIndex = idx;
+    currentCityIndex = idx;
+    saveSettings();
 }
 
 // 設定画面表示
@@ -135,14 +150,14 @@ void handleSettingsTouch(int x, int y) {
 void selectNextCity() {
     nextCityIndex = (nextCityIndex + 1) % CITY_COUNT;
     showSettingsScreen();  // 画面を再描画
-    M5.Speaker.tone(3000, 100);  // 非ブロッキング。delayは入れない（フリーズ防止）
+    M5.Speaker.tone(BEEP_FREQ, BEEP_DURATION);  // 非ブロッキング。delayは入れない（フリーズ防止）
 }
 
 void setCurrentCity() {
     currentCityIndex = nextCityIndex;
     saveSettings();
     showSettingsScreen();  // 画面を再描画
-    M5.Speaker.tone(3000, 100);
+    M5.Speaker.tone(BEEP_FREQ, BEEP_DURATION);
 }
 
 #endif // SETTINGS_H

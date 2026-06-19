@@ -87,7 +87,7 @@ void drawDisplay(){
                     showMainScreen(willRain, rainProbability, temperature, temperature_min, temperature_max, weatherIcon, cityName);
                     break;
                 case FORECAST_PAGE:
-                    showForecastScreen(doc, willRain);
+                    showForecastScreen(doc, willRain, getCurrentTimezoneOffset());
                     break;
                 case SETTINGS_PAGE:
                     showSettingsScreen();
@@ -217,7 +217,7 @@ void drawSettingsPage(){
 
 // 接続状態表示の更新（右上の点滅アイコン）
 void drawConnectionStatus() {
-    if(millis() % 1000 < 500) canvas.fillCircle(320 / 2 + 16, 30, 6, CONNECT_COLOR);
+    if((millis() / STATUS_BLINK_INTERVAL) % 2 == 0) canvas.fillCircle(320 / 2 + 16, 30, 6, CONNECT_COLOR);
     canvas.setTextDatum(ML_DATUM);
     canvas.setTextColor(CONNECT_COLOR);
     canvas.drawString(connectionStatus, 320 / 2 + 26, 30);
@@ -247,6 +247,7 @@ void setup() {
     // M5Unified初期化
     auto cfg = M5.config();
     M5.begin(cfg);
+    M5.Speaker.setVolume(BEEP_VOLUME);  // ビープ音量（0で消音）
     width = M5.Display.width();
     height = M5.Display.height();
     
@@ -414,7 +415,7 @@ void changeDeviceMode(DeviceMode _mode, bool _isBeep){
     deviceMode = _mode;
     drawDisplay();
     if(_isBeep){
-        M5.Speaker.tone(3000, 100);  // 非ブロッキング。delayは入れない（フリーズ防止）
+        M5.Speaker.tone(BEEP_FREQ, BEEP_DURATION);  // 非ブロッキング。delayは入れない（フリーズ防止）
     }
 }
 
@@ -442,7 +443,7 @@ void changeScreenMode(ScreenMode _mode, bool _isBeep){
     currentScreen = _mode;
     drawDisplay();
     if(_isBeep){
-        M5.Speaker.tone(3000, 100);  // 非ブロッキング。delayは入れない（フリーズ防止）
+        M5.Speaker.tone(BEEP_FREQ, BEEP_DURATION);  // 非ブロッキング。delayは入れない（フリーズ防止）
     }
 }
 
@@ -538,7 +539,7 @@ void C_Pressed(){
             canvas.setTextDatum(MC_DATUM);
             canvas.drawString("設定を初期化します...", width/2, height/2);
             canvas.pushSprite(&M5.Display, 0, 0);
-            M5.Speaker.tone(3000, 100);
+            M5.Speaker.tone(BEEP_FREQ, BEEP_DURATION);
             delay(1000);
             resetSettings();
             break;
@@ -631,7 +632,9 @@ bool checkWeatherForecast() {
         weatherDescription = doc["list"][0]["weather"][0]["description"].as<String>();
         cityName = doc["city"]["name"].as<String>();
 
-        for (int i = 0; i < 4; i++) {
+        // 予報は3時間刻みなので、チェック枠数 = チェック時間 / 3
+        const int forecastSlots = FORECAST_CHECK_HOURS / 3;
+        for (int i = 0; i < forecastSlots; i++) {
             String weatherMain = doc["list"][i]["weather"][0]["main"].as<String>();
             float pop = doc["list"][i]["pop"].as<float>() * 100;  // 降水確率（%）
             float t_min = doc["list"][i]["main"]["temp_min"].as<float>();  // 最低気温
@@ -667,8 +670,8 @@ bool checkWeatherForecast() {
 
 void reloadWeatherApi(){
     // 最大試行回数
-    const int MAX_RETRIES = 3;
-    const unsigned long RETRY_DELAY = 1000 * 60; // 1分
+    const int MAX_RETRIES = WEATHER_MAX_RETRIES;
+    const unsigned long RETRY_DELAY = WEATHER_RETRY_DELAY;
     
     int retryCount = 0;
     bool success = false;
@@ -755,7 +758,7 @@ void rebootDevice(){
     canvas.setTextDatum(MC_DATUM);
     canvas.drawString("再起動中...", width/2, height/2);
     canvas.pushSprite(&M5.Display, 0, 0);
-    M5.Speaker.tone(3000, 500);
+    M5.Speaker.tone(BEEP_FREQ, 500);  // 再起動確認音（長め）
     delay(1000);
     ESP.restart();
 }

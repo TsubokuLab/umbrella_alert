@@ -148,7 +148,7 @@ void showDetailScreen(float temperature, float humidity, float windSpeed, String
     canvas.pushSprite(&M5.Display, 0, 0);
 }
 
-void showForecastScreen(DynamicJsonDocument& doc, bool willRain){
+void showForecastScreen(DynamicJsonDocument& doc, bool willRain, long tzOffsetSec){
     currentScreen = FORECAST_PAGE;
     int width = M5.Display.width(); //320
     int height = M5.Display.height(); //240
@@ -173,7 +173,7 @@ void showForecastScreen(DynamicJsonDocument& doc, bool willRain){
 
     int startY = 45;
     int itemHeight = 25;
-    for (int i = 0; i < 6; i++) {
+    for (int i = 0; i < FORECAST_DISPLAY_COUNT; i++) {
         String main = doc["list"][i]["weather"][0]["main"].as<String>();
         //String description = doc["list"][0]["weather"][0]["description"].as<String>();
         String _iconPath = doc["list"][i]["weather"][0]["icon"].as<String>();
@@ -185,7 +185,7 @@ void showForecastScreen(DynamicJsonDocument& doc, bool willRain){
 
         // 構造体に展開
         tmElements_t tm;
-        breakTime(unixTime + 9 * 3600, tm); // + 9*3600 日本時間
+        breakTime(unixTime + tzOffsetSec, tm); // 選択中の都市のタイムゾーンで補正
         char buf[20];
         sprintf(buf, "%d/%02d", tm.Month, tm.Day);
         String _timeStr = String(buf);

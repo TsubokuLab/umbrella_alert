@@ -72,6 +72,22 @@ enum ScreenMode {
 // ===== 天気チェック設定 =====
 #define UPDATE_INTERVAL 1800000  // 更新間隔: 30分 (ミリ秒)
 #define RAIN_THRESHOLD 40        // 降水確率のしきい値 (%)
+#define FORECAST_CHECK_HOURS 12  // 何時間先までの雨をチェックするか(3時間単位)。12=直近4枠
+#define FORECAST_DISPLAY_COUNT 6 // 予報画面に表示する行数
+
+// 天気取得リトライ
+#define WEATHER_MAX_RETRIES 3        // 取得失敗時の最大リトライ回数
+#define WEATHER_RETRY_DELAY 60000    // リトライ間隔 (ミリ秒)
+
+// タイムゾーン（都市未設定時のフォールバック。通常は都市ごとの設定を使用）
+#define DEFAULT_TIMEZONE_OFFSET (9 * 3600)  // 既定のUTC補正(秒)。日本=+9時間
+
+// ===== ビープ音設定 =====
+// BEEP_VOLUME: 0=消音。将来Web/UIのプルダウンから選択する想定。
+//   目安: 0(消音) / 32(小) / 64(中) / 128(大) / 255(最大)
+#define BEEP_VOLUME 64           // 音量 (0-255、0で消音)
+#define BEEP_FREQ 3000           // 周波数 (Hz)
+#define BEEP_DURATION 100        // 長さ (ミリ秒)
 
 // ===== ループ/描画タイミング設定 =====
 // 重い全画面再描画を毎ループ行うとタッチ判定が間引かれて反応が鈍くなるため、
@@ -83,6 +99,7 @@ enum ScreenMode {
 // WARNING_BLINK_INTERVAL より十分小さい値にすること（推奨: 半分以下）。
 #define DRAW_INTERVAL 125            // 画面再描画の最小間隔(ms)。大きいほど省電力
 #define WARNING_BLINK_INTERVAL 250   // 雨時の画面縁点滅の点灯/消灯の切替間隔(ms)
+#define STATUS_BLINK_INTERVAL 500    // 設定画面の接続インジケータ点滅の切替間隔(ms)
 
 // ===== 都市設定 =====
 // 都市ID（OpenWeatherMapのcity ID）
