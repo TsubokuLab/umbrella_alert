@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>場所設定 - 傘通知アプリ</title>
+<link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">☂️</text></svg>'>
+<!-- Leaflet (地図) -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<style>
+  :root{
+    --primary-start:#667eea;
+    --primary-end:#764ba2;
+    --danger:#ef4444;
+  }
+  *{box-sizing:border-box;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    margin:0;padding:16px;
+    background:linear-gradient(135deg,var(--primary-start),var(--primary-end));
+    min-height:100vh;color:#1f2937;
+  }
+  .container{
+    max-width:480px;margin:0 auto;
+    background:rgba(255,255,255,0.97);border-radius:20px;
+    padding:24px;box-shadow:0 25px 50px rgba(0,0,0,0.25);
+  }
+  h1{font-size:22px;text-align:center;margin:0 0 4px;color:#2d3748;}
+  .sub{text-align:center;color:#6b7280;font-size:13px;margin-bottom:16px;}
+  .device{
+    font-size:13px;background:rgba(102,126,234,0.1);
+    border:1px solid rgba(102,126,234,0.25);border-radius:10px;
+    padding:10px 12px;margin-bottom:14px;color:#1e40af;word-break:break-all;
+  }
+  #map{height:300px;border-radius:14px;margin-bottom:12px;border:1px solid #e5e7eb;}
+  label{display:block;font-weight:600;font-size:14px;margin:12px 0 6px;color:#374151;}
+  input[type=text],input[type=number]{
+    width:100%;padding:14px;border:2px solid #e2e8f0;border-radius:12px;
+    font-size:16px;transition:border-color .2s;
+  }
+  input:focus{outline:none;border-color:var(--primary-start);}
+  .coords{display:flex;gap:10px;}
+  .coords>div{flex:1;}
+  .btn{
+    width:100%;padding:16px;border:none;border-radius:12px;
+    font-size:16px;font-weight:700;cursor:pointer;margin-top:14px;
+    color:#fff;background:linear-gradient(135deg,var(--primary-start),var(--primary-end));
+    transition:transform .15s,box-shadow .15s;
+  }
+  .btn:active{transform:translateY(1px);}
+  .btn.secondary{background:#fff;color:var(--primary-end);border:2px solid var(--primary-start);}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+  .status{margin-top:14px;padding:12px;border-radius:10px;font-size:14px;display:none;}
+  .status.show{display:block;}
+  .status.ok{background:rgba(34,197,94,.12);color:#166534;border:1px solid rgba(34,197,94,.3);}
+  .status.warn{background:rgba(245,158,11,.12);color:#92400e;border:1px solid rgba(245,158,11,.3);}
+  .status.err{background:rgba(239,68,68,.12);color:#991b1b;border:1px solid rgba(239,68,68,.3);}
+  .manual{margin-top:10px;font-size:12px;color:#6b7280;word-break:break-all;}
+  .manual a{color:var(--primary-end);}
+  .footer{text-align:center;margin-top:20px;font-size:12px;color:#9ca3af;}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>☂️ 場所の設定</h1>
+  <div class="sub">傘通知アプリに天気を表示する場所を選びます</div>
+
+  <div class="device" id="deviceInfo">本体IPを確認中…</div>
+
+  <div id="map"></div>
+
+  <button class="btn secondary" id="gpsBtn">📍 現在地を取得</button>
+
+  <label for="name">地名（表示名）</label>
+  <input type="text" id="name" placeholder="例: 自宅 / 渋谷">
+
+  <div class="coords">
+    <div>
+      <label for="lat">緯度</label>
+      <input type="number" id="lat" step="0.000001" placeholder="35.681">
+    </div>
+    <div>
+      <label for="lon">経度</label>
+      <input type="number" id="lon" step="0.000001" placeholder="139.767">
+    </div>
+  </div>
+
+  <button class="btn" id="sendBtn">✅ この場所を本体に送信</button>
+
+  <div class="status" id="status"></div>
+  <div class="manual" id="manual"></div>
+
+  <div class="footer">© 2025 Umbrella Alert</div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---- 状態 ----
+  // 既定は東京駅付近
+  let lat = 35.681236, lon = 139.767125;
+  const tzOffsetSec = -new Date().getTimezoneOffset() * 60; // 端末のTZ(秒)を既定として送る
+
+  // ---- 要素 ----
+  const $ = (id) => document.getElementById(id);
+  const latInput = $("lat"), lonInput = $("lon"), nameInput = $("name");
+  const statusEl = $("status"), manualEl = $("manual");
+
+  // ---- 本体IPの取得（?ip=192.168.x.x）----
+  const params = new URLSearchParams(location.search);
+  let deviceIp = params.get("ip") || "";
+  function renderDeviceInfo(){
+    if (deviceIp) {
+      $("deviceInfo").innerHTML = "送信先デバイス: <strong>" + deviceIp + "</strong>";
+    } else {
+      $("deviceInfo").innerHTML =
+        "⚠️ 本体IPがURLにありません。本体のQRから開き直すか、IPを手入力してください:" +
+        "<br><input type='text' id='ipManual' placeholder='192.168.x.x' style='margin-top:8px'>";
+      // 手入力監視
+      setTimeout(()=>{
+        const m = $("ipManual");
+        if (m) m.addEventListener("input", e => { deviceIp = e.target.value.trim(); });
+      }, 0);
+    }
+  }
+  renderDeviceInfo();
+
+  // ---- 地図（Leaflet）----
+  const map = L.map("map").setView([lat, lon], 14);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: "© OpenStreetMap contributors"
+  }).addTo(map);
+
+  const marker = L.marker([lat, lon], { draggable: true }).addTo(map);
+
+  function setCoords(newLat, newLon, fly){
+    lat = newLat; lon = newLon;
+    latInput.value = lat.toFixed(6);
+    lonInput.value = lon.toFixed(6);
+    marker.setLatLng([lat, lon]);
+    if (fly) map.setView([lat, lon], Math.max(map.getZoom(), 14));
+    reverseGeocode(lat, lon);
+  }
+  setCoords(lat, lon, false);
+
+  // 地図タップでピン移動
+  map.on("click", e => setCoords(e.latlng.lat, e.latlng.lng, false));
+  // ピンのドラッグ
+  marker.on("dragend", () => { const p = marker.getLatLng(); setCoords(p.lat, p.lng, false); });
+  // 緯度経度の手入力を反映
+  latInput.addEventListener("change", () => setCoords(parseFloat(latInput.value)||lat, lon, true));
+  lonInput.addEventListener("change", () => setCoords(lat, parseFloat(lonInput.value)||lon, true));
+
+  // ---- 現在地取得（GPS / Geolocation）----
+  $("gpsBtn").addEventListener("click", () => {
+    if (!navigator.geolocation) { showStatus("err", "この端末は位置情報に対応していません"); return; }
+    showStatus("warn", "現在地を取得中…（許可を求められたら許可してください）");
+    navigator.geolocation.getCurrentPosition(
+      pos => { setCoords(pos.coords.latitude, pos.coords.longitude, true); showStatus("ok", "現在地を取得しました"); },
+      err => { showStatus("err", "現在地の取得に失敗: " + err.message); },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  });
+
+  // ---- 逆ジオコーディングで地名を自動補完（best-effort, Nominatim）----
+  let geoTimer = null;
+  function reverseGeocode(la, lo){
+    if (nameInput.dataset.userEdited === "1") return; // ユーザーが手入力したら上書きしない
+    clearTimeout(geoTimer);
+    geoTimer = setTimeout(async () => {
+      try {
+        const url = "https://nominatim.openstreetmap.org/reverse?format=json&zoom=14&accept-language=ja"
+                  + "&lat=" + la + "&lon=" + lo;
+        const r = await fetch(url, { headers: { "Accept": "application/json" } });
+        const d = await r.json();
+        const a = d.address || {};
+        const name = a.city || a.town || a.village || a.suburb || a.county || d.name || "";
+        if (name && nameInput.dataset.userEdited !== "1") nameInput.value = name;
+      } catch (e) { /* 失敗しても無視（手入力でOK） */ }
+    }, 600);
+  }
+  nameInput.addEventListener("input", () => { nameInput.dataset.userEdited = "1"; });
+
+  // ---- 送信 ----
+  function buildSaveUrl(){
+    const q = new URLSearchParams({
+      lat: lat.toFixed(6),
+      lon: lon.toFixed(6),
+      name: nameInput.value || "",
+      tz: String(tzOffsetSec)
+    });
+    return "http://" + deviceIp + "/save?" + q.toString();
+  }
+
+  $("sendBtn").addEventListener("click", () => {
+    if (!deviceIp) { showStatus("err", "本体IPが未指定です"); return; }
+    const url = buildSaveUrl();
+
+    // 注意: HTTPS(本ページ) → HTTP(本体) は Mixed Content でブロックされる場合がある。
+    // no-cors fetch と 画像ビーコンの両方を試し、ダメな時のために手動URLも提示する。
+    let settled = false;
+    const done = () => { if (settled) return; settled = true;
+      showStatus("ok", "送信しました。本体が再起動して反映します（数十秒）。");
+    };
+
+    try { fetch(url, { mode: "no-cors" }).then(done).catch(()=>{}); } catch(e){}
+    try { const img = new Image(); img.onload = done; img.src = url; } catch(e){}
+
+    // 念のため手動フォールバックを常時表示
+    manualEl.innerHTML = "うまく反映されない場合は、本体と同じWi-Fiに繋いだ状態で次のURLを開いてください:<br>"
+      + "<a href='" + url + "' target='_blank' rel='noopener'>" + url + "</a>";
+
+    showStatus("warn", "送信を試みています…（HTTPS→HTTP制限でブロックされる場合は下のURLを開いてください）");
+    setTimeout(done, 1500);
+  });
+
+  function showStatus(type, msg){
+    statusEl.className = "status show " + type;
+    statusEl.textContent = msg;
+  }
+})();
+</script>
+</body>
+</html>
