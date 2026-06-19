@@ -81,7 +81,6 @@ void drawDisplay(){
             drawSetupPage();
             break;
         case APP_MODE:
-            //drawMainPage();
             switch(currentScreen){
                 case MAIN_PAGE:
                     showMainScreen(willRain, rainProbability, temperature, temperature_min, temperature_max, weatherIcon, cityName);
@@ -163,46 +162,6 @@ void drawSetupPage(){
     itemY += itemHeight;
     canvas.drawString(_setting_url, 320 / 2, itemY);
     canvas.pushSprite(&M5.Display, 0, 0);
-}
-
-// アプリのメイン画面描画（ここをカスタマイズしてください）
-void drawMainPage(){
-    // ここにアプリのメイン画面描画処理などを書く ////////////////////
-    // サンプルアプリ画面
-    int itemX = 10;
-    int itemY = 10;
-    int itemHeight = 16 * FONT_SCALE;
-    
-    canvas.clear(LCD_BG_COLOR);
-    canvas.setTextSize(1.0 * FONT_SCALE);
-    
-    // ヘッダー
-    itemY = 10;
-    canvas.setTextDatum(MC_DATUM);
-    canvas.fillRoundRect(10, 10, width/2 - 20, 40, 10, APP_COLOR);
-    itemY += 20;
-    canvas.setTextColor(WHITE);
-    canvas.setFont(&fonts::lgfxJapanGothicP_20);
-    canvas.drawString("アプリ画面", width/4, itemY);
-    canvas.setFont(&fonts::lgfxJapanGothicP_16);
-    
-    // コンテンツエリア
-    itemY = 60;
-    canvas.setTextDatum(TL_DATUM);
-    canvas.setTextColor(LCD_TEXT_COLOR);
-    canvas.drawString("<アプリメイン画面サンプル>", itemX, itemY);
-    itemY += itemHeight;
-    itemY += itemHeight;
-    canvas.drawString("サンプルテキスト", itemX, itemY);
-    itemY += itemHeight;
-    canvas.drawString("サンプルテキスト", itemX, itemY);
-    itemY += itemHeight;
-    canvas.drawString("サンプルテキスト", itemX, itemY);
-
-    drawConnectionStatus();
-    drawVirtualButtons("設定", "---", "---");
-    canvas.pushSprite(&M5.Display, 0, 0);
-    ///////////////////////////////////////////////////////////////
 }
 
 // 設定画面の描画（WiFi状態確認・管理）

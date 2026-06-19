@@ -46,36 +46,6 @@ void showMainScreen(bool willRain, float rainProbability, float temperature, flo
     int height = M5.Display.height(); //240
     
     String _iconPath = _iconName;
-    // if(willRain){
-    //     _iconPath = UMBRELLA_PATH;
-    // }else{
-    //     // 天気アイコンを選択
-    //     String _numStr = _iconName;
-    //     _numStr.replace("d", "");
-    //     _numStr.replace("n", "");
-    //     if(_iconName.indexOf("d") != -1){
-    //         // 昼
-    //         if(_numStr == "01" || _numStr == "02"){
-    //             _iconPath = SUN_PATH;
-    //         }else if(_numStr == "03" || _numStr == "04"){
-    //             _iconPath = DAY_CLOUD_PATH;
-    //         }else if(_numStr == "09" || _numStr == "10" || _numStr == "11" || _numStr == "13"){
-    //             _iconPath = CLOUD_PATH;
-    //         }
-    //     }
-    //     if(_iconName.indexOf("n") != -1){
-    //         // 夜
-    //         if(_numStr == "01" || _numStr == "02"){
-    //             _iconPath = SUN_PATH;
-    //         }else if(_numStr == "03" || _numStr == "04"){
-    //             _iconPath = DAY_CLOUD_PATH;
-    //         }else if(_numStr == "09" || _numStr == "10" || _numStr == "11" || _numStr == "13"){
-    //             _iconPath = CLOUD_PATH;
-    //         }
-    //     }
-    //     _iconPath = _iconName;
-    // }
-    // Serial.println("Path: " + _iconPath);
 
     canvas.fillScreen(willRain ? RAINY_COLOR : SUNNY_COLOR);
     canvas.setTextColor(willRain ? TFT_WHITE : NAVY_COLOR);
@@ -178,7 +148,7 @@ void showDetailScreen(float temperature, float humidity, float windSpeed, String
     canvas.pushSprite(&M5.Display, 0, 0);
 }
 
-void showForecastScreen(DynamicJsonDocument doc, bool willRain){
+void showForecastScreen(DynamicJsonDocument& doc, bool willRain){
     currentScreen = FORECAST_PAGE;
     int width = M5.Display.width(); //320
     int height = M5.Display.height(); //240
@@ -209,8 +179,6 @@ void showForecastScreen(DynamicJsonDocument doc, bool willRain){
         String _iconPath = doc["list"][i]["weather"][0]["icon"].as<String>();
         float pop = doc["list"][i]["pop"].as<float>() * 100;  // 降水確率（%）
         float temp = doc["list"][i]["main"]["temp_min"].as<float>();  // 気温
-        float t_min = doc["list"][i]["main"]["temp_min"].as<float>();  // 最低気温
-        float t_max = doc["list"][i]["main"]["temp_max"].as<float>();  // 最高気温
 
         // 時間
         time_t unixTime = doc["list"][i]["dt"].as<int>();
@@ -259,14 +227,6 @@ void showLoadingScreen() {
     
     canvas.fillCircle(160, 150, 5, TFT_WHITE);
     canvas.pushSprite(&M5.Display, 0, 0);
-
-    // ローディングアニメーション
-    // for (int i = 0; i < 10; i++) {
-    //     canvas.fillCircle(160, 150, 5, TFT_WHITE);
-    //     delay(100);
-    //     canvas.fillCircle(160, 150, 5, TFT_BLACK);
-    //     delay(100);
-    // }
 }
 
 // エラー画面表示
@@ -293,20 +253,33 @@ bool drawPngFromLittleFS(const String& path, int16_t x, int16_t y) {
     return drawPngFromLittleFS(path.c_str(), x, y);  // 既存のconst char*バージョンを呼び出す
 }
 // LittleFSからPNGを読み込んで表示するヘルパー関数
+// メイン画面は毎フレーム同じアイコンを描画するため、直近1件のPNGを
+// RAMにキャッシュしてフラッシュの再読込・メモリ再確保を回避する。
+// （描画に渡すバイト列は同一なので表示結果は変わらない）
 bool drawPngFromLittleFS(const char* path, int16_t x, int16_t y) {
+    static String cachedPath;
+    static std::unique_ptr<uint8_t[]> cachedBuf;
+    static size_t cachedSize = 0;
+
+    // キャッシュヒット: 同じファイルなら再読込せずに描画
+    if (cachedBuf && cachedPath == path) {
+        canvas.drawPng(cachedBuf.get(), cachedSize, x, y);
+        return true;
+    }
+
     auto file = LittleFS.open(path, "r");
     if (!file) {
         Serial.printf("ファイルが開けません: %s\n", path);
         return false;
     }
-    
+
     size_t fileSize = file.size();
     if (fileSize == 0) {
         Serial.println("ファイルサイズが0です");
         file.close();
         return false;
     }
-    
+
     // ファイルバッファを確保
     std::unique_ptr<uint8_t[]> buffer(new uint8_t[fileSize]);
     if (!buffer) {
@@ -314,18 +287,23 @@ bool drawPngFromLittleFS(const char* path, int16_t x, int16_t y) {
         file.close();
         return false;
     }
-    
+
     // ファイルを読み込む
     size_t readBytes = file.read(buffer.get(), fileSize);
     file.close();
-    
+
     if (readBytes != fileSize) {
         Serial.println("ファイル読み込みエラー");
         return false;
     }
-    
+
     // PNGを描画
     canvas.drawPng(buffer.get(), fileSize, x, y);
+
+    // 次回のためにキャッシュへ保存
+    cachedPath = path;
+    cachedSize = fileSize;
+    cachedBuf  = std::move(buffer);
     return true;
 }
 
