@@ -77,8 +77,12 @@ enum ScreenMode {
 // 重い全画面再描画を毎ループ行うとタッチ判定が間引かれて反応が鈍くなるため、
 // 入力サンプリング(LOOP_DELAY)と描画(DRAW_INTERVAL)・LED更新(LED_UPDATE_INTERVAL)を分離する。
 #define LOOP_DELAY 5             // メインループの遅延(ms)。小さいほどタッチ反応が良い
-#define DRAW_INTERVAL 100        // 画面再描画の最小間隔(ms)。点滅アニメ(250ms周期)を維持できる範囲
-#define LED_UPDATE_INTERVAL 50   // LED更新の間隔(ms)。雨アニメの回転速度を決める(小=速い。24*50ms≒1.2秒で1周)
+
+// 画面再描画: 静止画面では再描画せず、アニメ(雨時の縁点滅・設定画面)時のみ
+// DRAW_INTERVAL間隔で再描画する。縁点滅を表示し切れる必要があるため、
+// WARNING_BLINK_INTERVAL より十分小さい値にすること（推奨: 半分以下）。
+#define DRAW_INTERVAL 125            // 画面再描画の最小間隔(ms)。大きいほど省電力
+#define WARNING_BLINK_INTERVAL 250   // 雨時の画面縁点滅の点灯/消灯の切替間隔(ms)
 
 // ===== 都市設定 =====
 // 都市ID（OpenWeatherMapのcity ID）
@@ -93,10 +97,17 @@ enum ScreenMode {
 // デフォルト設定
 #define DEFAULT_CITY_ID CITY_TOKYO
 
-// ===== ハードウェア設定 =====
-#define LED_PIN 32               // NeoPixel LEDのピン番号 (Core2: 32)
-#define LED_COUNT 24             // LEDの数
-#define LED_BRIGHTNESS 255        // LED明るさ (0-255)
+// ===== ハードウェア設定（NeoPixel LED）=====
+// LED_PINは既定で M5.Ex_I2C.getSDA()（Groveポート）を使う。
+// 固定ピンを使いたい場合は LED_USE_GROVE_PIN を 0 にして LED_PIN を有効化する。
+#define LED_USE_GROVE_PIN 1      // 1: GroveのSDAピンを自動使用 / 0: LED_PINを使用
+#define LED_PIN 32               // NeoPixel LEDのピン番号 (LED_USE_GROVE_PIN=0 のとき有効)
+#define LED_COUNT 24             // LEDの数（リング/テープの実装数に合わせる）
+#define LED_BRIGHTNESS 255       // LED明るさ (0-255)
+
+// LED更新と雨アニメの回転速度（fpsと回転速度を分離）
+#define LED_UPDATE_INTERVAL 10   // LED更新の間隔(ms)。10ms=100fps（90fps以上を維持）
+#define LED_ROTATION_PERIOD 1500 // 雨アニメが1周する時間(ms)。更新fpsとは無関係（小=速い回転）
 
 // ===== 色設定 =====
 #define SUNNY_COLOR M5.Display.color565(240, 240, 210)  // 晴れの背景色

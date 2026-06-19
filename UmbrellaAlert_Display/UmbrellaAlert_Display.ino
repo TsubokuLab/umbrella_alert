@@ -20,15 +20,14 @@
 #include "settings.h"
 #include "weather.h"
 
-// NeoPixel LEDの設定
-Adafruit_NeoPixel pixels = Adafruit_NeoPixel(24, M5.Ex_I2C.getSDA(), NEO_GRB + NEO_KHZ800);
+// NeoPixel LEDの設定（ピンはsetup()内でLED_USE_GROVE_PINに応じて設定）
+Adafruit_NeoPixel pixels = Adafruit_NeoPixel(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
 int rotation = 0;
 bool attentionFlg = false;
 
 // タイマー設定
 unsigned long lastUpdateTime = 0;
 unsigned long lastDrawTime = 0;      // 最後に画面を再描画した時刻
-unsigned long lastLedTime = 0;       // 最後にLEDを更新した時刻
 
 // 状態変数
 bool willRain = false;
@@ -279,15 +278,22 @@ void setup() {
     M5.Display.println(String(APP_TITLE) + " - " + String(APP_VERSION));
     M5.Display.println("起動中...");
 
-    // LEDの初期化
+    // LEDの初期化（ピンはGrove自動 or 固定ピンを選択）
+#if LED_USE_GROVE_PIN
     pixels.setPin(M5.Ex_I2C.getSDA());
+#else
+    pixels.setPin(LED_PIN);
+#endif
     pixels.begin();
     pixels.setBrightness(LED_BRIGHTNESS);
     pixels.clear();
     for (int i = 0; i < LED_COUNT; i++) {
-        pixels.setPixelColor(i, pixels.Color(255, 0, 0)); 
+        pixels.setPixelColor(i, pixels.Color(255, 0, 0));
     }
     pixels.show();
+
+    // LED更新を別コア(core 0)の専用タスクで回し、描画負荷から独立させる
+    xTaskCreatePinnedToCore(ledTask, "ledTask", 4096, NULL, 1, NULL, 0);
 
     // 保存された設定で接続試行
     if (restoreConfig()) {
@@ -325,11 +331,8 @@ void loop() {
     dnsServer.processNextRequest();
     webServer.handleClient();
 
-    // LED更新は一定間隔に間引く（雨アニメの回転速度を一定に保つ）
-    if (currentTime - lastLedTime >= LED_UPDATE_INTERVAL) {
-        lastLedTime = currentTime;
-        updateLEDs();
-    }
+    // LED更新は専用タスク(別コア)で実行するためループでは呼ばない
+    // → 重い再描画にブロックされず、常に一定fpsを維持できる
 
     // タッチスクリーン処理（エッジ検出: 1タップ＝1動作。押しっぱなしでの連打を防ぐ）
     auto touch = M5.Touch.getDetail();
@@ -370,9 +373,14 @@ void loop() {
     if (M5.BtnB.wasPressed()) B_Pressed();
     if (M5.BtnC.wasPressed()) C_Pressed();
 
-    // メイン画面か設定画面時のみ更新（重いので一定間隔に間引く）
-    if((currentScreen == MAIN_PAGE || deviceMode == SETTING_MODE)
-        && currentTime - lastDrawTime >= DRAW_INTERVAL){
+    // 定期再描画はアニメーションがある時のみ（省電力）。
+    //  ・メイン画面で雨の時 → 画面縁の点滅
+    //  ・設定モード → 稼働秒数と接続状態の点滅
+    // 静止画面は画面遷移時に1回描画済みなので再描画しない。
+    bool needsPeriodicRedraw =
+        (deviceMode == APP_MODE && currentScreen == MAIN_PAGE && willRain) ||
+        (deviceMode == SETTING_MODE);
+    if(needsPeriodicRedraw && currentTime - lastDrawTime >= DRAW_INTERVAL){
         lastDrawTime = currentTime;
         drawDisplay();
     }
@@ -547,13 +555,13 @@ void updateLEDs(){
         // 回転する明るい部分（ハイライト）
         float _speed = 1.0 * 3.14;
         float _fade = 1.0 + float(sin(millis() * 0.001 * _speed) * 0.5);
+        // 回転位置を時間から算出（更新fpsに依存せず、LED_ROTATION_PERIODで1周）
+        rotation = (int)(((float)(millis() % LED_ROTATION_PERIOD) / LED_ROTATION_PERIOD) * LED_COUNT) % LED_COUNT;
         for (int offset = 0; offset <= LED_COUNT; offset++) {
             int pos = (rotation + offset + LED_COUNT) % LED_COUNT;
             float _amp = (abs(offset * divisions % LED_COUNT) / float(LED_COUNT)) * _fade;
             pixels.setPixelColor(pos, 0, brightness * _amp, LED_BRIGHTNESS * _amp);
         }
-        // 次の位置へ回転
-        rotation = (rotation + 1) % LED_COUNT;
     } else {
         float _speed = 0.5 * 3.14;
         float _amp = 1.0 + float(sin(millis() * 0.001 * _speed) * 0.4);
@@ -564,6 +572,14 @@ void updateLEDs(){
         }
     }
     pixels.show();
+}
+
+// LED更新用タスク（別コアで実行）。重い画面描画にブロックされず一定fpsを保つ。
+void ledTask(void* param){
+    for(;;){
+        updateLEDs();
+        vTaskDelay(pdMS_TO_TICKS(LED_UPDATE_INTERVAL));
+    }
 }
 
 // 天気予報を取得して12時間以内に雨が降るかチェック

@@ -98,8 +98,8 @@ void showMainScreen(bool willRain, float rainProbability, float temperature, flo
     snprintf(probStr, sizeof(probStr), "降水確率: %.0f%%", rainProbability);
     canvas.drawString(probStr, width - 20, height - 50);
     
-    // 注視枠アニメーション
-    if(willRain && millis() % 500 < 250){
+    // 注視枠アニメーション（WARNING_BLINK_INTERVAL毎に点灯/消灯を切替）
+    if(willRain && (millis() / WARNING_BLINK_INTERVAL) % 2 == 0){
         int _bold = 8; // ライン太さ
         canvas.fillRect(0, 0, _bold, height - 40, WARNING_COLOR);
         canvas.fillRect(width - _bold, 0, _bold, height - 40, WARNING_COLOR);
