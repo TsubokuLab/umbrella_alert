@@ -27,6 +27,8 @@ bool attentionFlg = false;
 
 // タイマー設定
 unsigned long lastUpdateTime = 0;
+unsigned long lastDrawTime = 0;      // 最後に画面を再描画した時刻
+unsigned long lastLedTime = 0;       // 最後にLEDを更新した時刻
 
 // 状態変数
 bool willRain = false;
@@ -314,17 +316,21 @@ void setup() {
 
 // ===== メインループ =====
 void loop() {
+    unsigned long currentTime = millis();
+
+    // 入力を毎ループ先に取得（重い再描画より前に判定し、短いタッチの取りこぼしを防ぐ）
+    M5.update();
+
     // ネットワーク処理
     dnsServer.processNextRequest();
     webServer.handleClient();
-    updateLEDs();
 
-    // メイン画面か設定画面時のみ毎回更新
-    if(currentScreen == MAIN_PAGE || deviceMode == SETTING_MODE){
-        drawDisplay();
+    // LED更新は一定間隔に間引く（雨アニメの回転速度を一定に保つ）
+    if (currentTime - lastLedTime >= LED_UPDATE_INTERVAL) {
+        lastLedTime = currentTime;
+        updateLEDs();
     }
 
-    M5.update();
     // タッチスクリーン処理
     auto touch = M5.Touch.getDetail();
     if (touch.isPressed()) {
@@ -350,7 +356,7 @@ void loop() {
                         handleSettingsTouch(touch.x, touch.y);
                         break;
                     case DETAIL_PAGE:
-                        
+
                         break;
                     default:
                         break;
@@ -363,15 +369,21 @@ void loop() {
     if (M5.BtnA.wasPressed()) A_Pressed();
     if (M5.BtnB.wasPressed()) B_Pressed();
     if (M5.BtnC.wasPressed()) C_Pressed();
-    
+
+    // メイン画面か設定画面時のみ更新（重いので一定間隔に間引く）
+    if((currentScreen == MAIN_PAGE || deviceMode == SETTING_MODE)
+        && currentTime - lastDrawTime >= DRAW_INTERVAL){
+        lastDrawTime = currentTime;
+        drawDisplay();
+    }
+
     // 定期的に天気を更新
-    unsigned long currentTime = millis();
     if (currentTime - lastUpdateTime >= UPDATE_INTERVAL) {
         lastUpdateTime = currentTime;
         reloadWeatherApi();
     }
 
-    delay(20);  // 軽いディレイでCPU負荷軽減
+    delay(LOOP_DELAY);  // 短い遅延でタッチ反応を確保しつつCPU負荷を軽減
 }
 
 // ==== ボタン処理機能 ====

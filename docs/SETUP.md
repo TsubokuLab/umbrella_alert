@@ -151,10 +151,26 @@ UmbrellaAlert_Display/
 | 症状 | 原因 | 対処 |
 |------|------|------|
 | アイコンが出ない / `ファイルが開けません` がシリアルに出る | LittleFSへ画像未アップロード | §4-1 のステップ5を実行 |
+| **スケッチを焼き直したら画像が消えた** | **Partition Schemeが既定に戻り、spiffs領域がずれて`LittleFS.begin(true)`で自動フォーマットされた** | **§5-1 参照。スキームをHuge APPに戻し、LittleFSを再アップロード** |
 | `LittleFS マウント失敗` | Partitionが`spiffs`系でない | Partition Schemeを「Huge APP」に変更して再書き込み |
 | LittleFSアップロードが失敗する | シリアルモニタが開いている | モニタを閉じてから再実行 |
 | コマンドパレットに「Upload LittleFS」が出ない | プラグイン未インストール / 古い版 | §2-1 のプラグインを入れIDE再起動 |
 | `text section exceeds available space` | APP領域が小さいPartition | 「Huge APP (3MB No OTA/1MB SPIFFS)」を選択 |
+
+### 5-1. 「スケッチ書き込みで画像が消える」問題（重要）
+通常、**スケッチ（APP領域）の書き込みではLittleFS（画像）は消えません**。毎回画像を再アップロードする必要はありません。
+それでも消える場合、原因はほぼ次のどちらかです。
+
+- **Partition Schemeが既定に戻っている（最頻出）**
+  Arduino IDE 2.x の Partition Scheme 選択は **「ボードごと」にIDE設定として記憶**されます（スケッチには保存されない）。
+  このリポジトリは Core2 / CoreS3 / NanoC6 を扱うため、**別ボードを選んでCoreS3に戻すと既定スキームにリセット**されがち。
+  既定スキームに変わると spiffs 領域の位置・サイズがずれ、`LittleFS.begin(true)`（マウント失敗時フォーマット）で**空に初期化**される。
+  → **書き込み前に毎回 `ツール → Partition Scheme = Huge APP (3MB No OTA/1MB SPIFFS)` を確認する**。
+- **「Erase All Flash Before Sketch Upload」が Enabled**
+  これが有効だと書き込みのたびに全フラッシュ消去（LittleFS含む）される。→ **Disabled** にする。
+
+復旧: ①スキームをHuge APPに戻す → ②`Erase All Flash...`をDisabledに → ③もう一度 Upload LittleFS（§4-1 ステップ5）。
+以降はスキームを固定したままなら、`.ino`の書き込みだけで画像は保持される。
 
 ---
 

@@ -73,6 +73,13 @@ enum ScreenMode {
 #define UPDATE_INTERVAL 1800000  // 更新間隔: 30分 (ミリ秒)
 #define RAIN_THRESHOLD 40        // 降水確率のしきい値 (%)
 
+// ===== ループ/描画タイミング設定 =====
+// 重い全画面再描画を毎ループ行うとタッチ判定が間引かれて反応が鈍くなるため、
+// 入力サンプリング(LOOP_DELAY)と描画(DRAW_INTERVAL)・LED更新(LED_UPDATE_INTERVAL)を分離する。
+#define LOOP_DELAY 5             // メインループの遅延(ms)。小さいほどタッチ反応が良い
+#define DRAW_INTERVAL 100        // 画面再描画の最小間隔(ms)。点滅アニメ(250ms周期)を維持できる範囲
+#define LED_UPDATE_INTERVAL 50   // LED更新の間隔(ms)。雨アニメの回転速度を決める(小=速い。24*50ms≒1.2秒で1周)
+
 // ===== 都市設定 =====
 // 都市ID（OpenWeatherMapのcity ID）
 #define CITY_AUTO "auto"         // 自動（IPアドレスから判定）
