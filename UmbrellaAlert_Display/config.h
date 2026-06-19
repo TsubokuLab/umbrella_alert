@@ -83,9 +83,13 @@ enum ScreenMode {
 #define DEFAULT_TIMEZONE_OFFSET (9 * 3600)  // 既定のUTC補正(秒)。日本=+9時間
 
 // ===== ビープ音設定 =====
-// BEEP_VOLUME: 0=消音。将来Web/UIのプルダウンから選択する想定。
-//   目安: 0(消音) / 32(小) / 64(中) / 128(大) / 255(最大)
-#define BEEP_VOLUME 64           // 音量 (0-255、0で消音)
+// 音量プリセット（大・中・小・OFF）。M5.Speaker の音量(0-255)に対応。
+#define BEEP_OFF    0
+#define BEEP_SMALL  32
+#define BEEP_MEDIUM 96
+#define BEEP_LARGE  200
+// 使用する音量をここで選択（BEEP_OFF / BEEP_SMALL / BEEP_MEDIUM / BEEP_LARGE）
+#define BEEP_VOLUME BEEP_MEDIUM
 #define BEEP_FREQ 3000           // 周波数 (Hz)
 #define BEEP_DURATION 100        // 長さ (ミリ秒)
 
