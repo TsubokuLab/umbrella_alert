@@ -15,10 +15,13 @@
 
 > 補助ツール: [`tools/UmbrellaAlert_ImageWriter/`](tools/UmbrellaAlert_ImageWriter/) — 画像書き込みのテスト用スケッチ。
 
+## ドキュメント
+- **[docs/SETUP.md](docs/SETUP.md)** — 新しいデバイスへの書き込み手順（環境構築・Partition設定・LittleFSアップロード・データ構造）
+- **[docs/SPEC.md](docs/SPEC.md)** — 仕様書（現行実装＋場所カスタム化計画：ハイブリッド都市/緯度経度、外部GitHub Pages設定）
+
 ## セットアップ
 
-新しいデバイスへの書き込み手順（環境構築・Partition設定・LittleFSアップロード・データ構造）は
-**[docs/SETUP.md](docs/SETUP.md)** にまとめています。
+新しいデバイスへの書き込み手順は **[docs/SETUP.md](docs/SETUP.md)** にまとめています。
 
 ざっくり:
 1. Arduino IDE 2.x + M5Stackボード + ライブラリ（M5Unified / ArduinoJson / Adafruit NeoPixel / TimeLib）
