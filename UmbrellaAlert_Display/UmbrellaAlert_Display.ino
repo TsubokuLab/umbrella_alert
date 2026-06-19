@@ -210,9 +210,29 @@ void drawSettingsPage(){
     itemY += itemHeight;
     canvas.drawString(_setting_url, itemX, itemY);
 
+    drawVolumeButton();
     drawConnectionStatus();
     drawVirtualButtons("戻る", "再起動", "初期化");
     canvas.pushSprite(&M5.Display, 0, 0);
+}
+
+// 設定画面の音量ボタンの矩形（QRコードの上に配置）
+void volumeButtonRect(int& x, int& y, int& w, int& h){
+    const int spacing = 10, qr_size = 80;
+    w = 130; h = 32;
+    x = width - w - spacing;
+    y = (height - 40 - qr_size - spacing) - h - spacing;
+}
+
+// 設定画面の音量ボタンを描画（小/中/大/OFF）
+void drawVolumeButton(){
+    int x, y, w, h; volumeButtonRect(x, y, w, h);
+    canvas.fillRoundRect(x, y, w, h, 8, BTN_BG_COLOR);
+    canvas.setFont(&fonts::lgfxJapanGothicP_16);
+    canvas.setTextSize(1.0 * FONT_SCALE);
+    canvas.setTextDatum(MC_DATUM);
+    canvas.setTextColor(BTN_TEXT_COLOR);
+    canvas.drawString("音量: " + String(currentBeepLabel()), x + w / 2, y + h / 2);
 }
 
 // 接続状態表示の更新（右上の点滅アイコン）
@@ -247,7 +267,7 @@ void setup() {
     // M5Unified初期化
     auto cfg = M5.config();
     M5.begin(cfg);
-    M5.Speaker.setVolume(BEEP_VOLUME);  // ビープ音量（0で消音）
+    applyBeepVolume();  // 保存済みのビープ音量を反映（小/中/大/OFF、0で消音）
     width = M5.Display.width();
     height = M5.Display.height();
     
@@ -366,6 +386,13 @@ void loop() {
                         break;
                 }
 
+            }else if(deviceMode == SETTING_MODE){
+                // 音量ボタン（小/中/大/OFFを循環）
+                int vx, vy, vw, vh; volumeButtonRect(vx, vy, vw, vh);
+                if(touchX >= vx && touchX <= vx + vw && touchY >= vy && touchY <= vy + vh){
+                    cycleBeepVolume();
+                    drawDisplay();  // ラベルを即時反映
+                }
             }
         }
     }
@@ -589,17 +616,22 @@ bool checkWeatherForecast() {
     
     HTTPClient http;
     String url;
-    const char* cityId = getCurrentCityId();
-    
-    // 自動モードとそれ以外で分岐
-    if (strcmp(cityId, CITY_AUTO) == 0) {
-        // IPアドレスから自動判定するモード
-        url = "http://api.openweathermap.org/data/2.5/forecast?q=ip&units=" + 
-              String(UNITS) + "&lang=" + String(LANGUAGE) + "&appid=" + String(API_KEY);
+    const String common = "&units=" + String(UNITS) + "&lang=" + String(LANGUAGE) + "&appid=" + String(API_KEY);
+
+    // 場所モードで分岐: カスタム(緯度経度) / 自動(IP) / プリセット都市ID
+    if (isCustomLocation()) {
+        // カスタム緯度経度モード
+        url = "http://api.openweathermap.org/data/2.5/forecast?lat=" + customLat +
+              "&lon=" + customLon + common;
     } else {
-        // 通常の都市ID指定モード
-        url = "http://api.openweathermap.org/data/2.5/forecast?id=" + String(cityId) + 
-              "&units=" + String(UNITS) + "&lang=" + String(LANGUAGE) + "&appid=" + String(API_KEY);
+        const char* cityId = getCurrentCityId();
+        if (strcmp(cityId, CITY_AUTO) == 0) {
+            // IPアドレスから自動判定するモード
+            url = "http://api.openweathermap.org/data/2.5/forecast?q=ip" + common;
+        } else {
+            // 通常の都市ID指定モード
+            url = "http://api.openweathermap.org/data/2.5/forecast?id=" + String(cityId) + common;
+        }
     }
 
     Serial.println("OpenWeatherMapに接続 : " + url);
@@ -630,7 +662,10 @@ bool checkWeatherForecast() {
         humidity = doc["list"][0]["main"]["humidity"].as<float>();
         windSpeed = doc["list"][0]["wind"]["speed"].as<float>();
         weatherDescription = doc["list"][0]["weather"][0]["description"].as<String>();
-        cityName = doc["city"]["name"].as<String>();
+        // カスタム場所では利用者が入力した地名を優先（空ならAPIの都市名）
+        cityName = (isCustomLocation() && customName.length() > 0)
+                       ? customName
+                       : doc["city"]["name"].as<String>();
 
         // 予報は3時間刻みなので、チェック枠数 = チェック時間 / 3
         const int forecastSlots = FORECAST_CHECK_HOURS / 3;

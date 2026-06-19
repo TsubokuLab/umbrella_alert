@@ -117,8 +117,11 @@ void setupMode() {
 // 設定をクリア（WiFi設定削除）
 void resetSettings(){
     Serial.println("設定をクリア");
+    // 音量/場所の保存で名前空間が切り替わっている可能性があるため明示的に開く
+    preferences.begin("wifi-config", false);
     preferences.remove("WIFI_SSID");
     preferences.remove("WIFI_PASSWD");
+    preferences.end();
     rebootDevice();
 }
 

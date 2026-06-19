@@ -44,6 +44,35 @@ extern M5Canvas canvas;
 extern ScreenMode currentScreen;
 extern void drawVirtualButtons(String btnA, String btnB, String btnC);
 
+// ===== 場所モード（ハイブリッド: プリセット都市 or カスタム緯度経度）=====
+// locMode: 0=PRESET（都市リスト） / 1=CUSTOM（緯度経度）
+int    locMode    = 0;
+String customLat  = "";
+String customLon  = "";
+String customName = "";
+long   customTz   = DEFAULT_TIMEZONE_OFFSET;
+
+bool isCustomLocation() {
+    return locMode == 1 && customLat.length() > 0 && customLon.length() > 0;
+}
+
+// ===== ビープ音量（プリセットをタップで循環・保存）=====
+const int BEEP_PRESETS[] = { BEEP_SMALL, BEEP_MEDIUM, BEEP_LARGE, BEEP_OFF };
+const char* const BEEP_LABELS[] = { "小", "中", "大", "OFF" };
+#define BEEP_PRESET_COUNT 4
+int beepVolIndex = 0;  // 既定はloadSettingsでconfigのBEEP_VOLUMEから決定
+
+// config の BEEP_VOLUME に一致するプリセット番号（未一致なら0=小）
+int defaultBeepIndex() {
+    for (int i = 0; i < BEEP_PRESET_COUNT; i++) {
+        if (BEEP_PRESETS[i] == BEEP_VOLUME) return i;
+    }
+    return 0;
+}
+int         currentBeepVolume() { return BEEP_PRESETS[beepVolIndex]; }
+const char* currentBeepLabel()  { return BEEP_LABELS[beepVolIndex]; }
+void        applyBeepVolume()   { M5.Speaker.setVolume(currentBeepVolume()); }
+
 // 設定のロード
 void loadSettings() {
     preferences.begin("weather_app", false);
@@ -52,14 +81,24 @@ void loadSettings() {
         currentCityIndex = INDEX_TOKYO;  // 範囲外の場合はデフォルトに戻す
     }
     nextCityIndex = currentCityIndex;
+    // 場所モード・カスタム座標
+    locMode    = preferences.getInt("loc_mode", 0);
+    customLat  = preferences.getString("lat", "");
+    customLon  = preferences.getString("lon", "");
+    customName = preferences.getString("loc_name", "");
+    customTz   = preferences.getLong("tz_offset", DEFAULT_TIMEZONE_OFFSET);
+    // ビープ音量
+    beepVolIndex = preferences.getInt("beep_idx", defaultBeepIndex());
+    if (beepVolIndex < 0 || beepVolIndex >= BEEP_PRESET_COUNT) beepVolIndex = defaultBeepIndex();
     preferences.end();
 }
 
-// 設定の保存
+// 設定の保存（都市インデックスと場所モード）
 void saveSettings() {
     preferences.begin("weather_app", false);
     currentCityIndex = nextCityIndex;
     preferences.putInt("city_index", currentCityIndex);
+    preferences.putInt("loc_mode", locMode);
     preferences.end();
 }
 
@@ -68,18 +107,41 @@ const char* getCurrentCityId() {
     return CITIES[currentCityIndex].id;
 }
 
-// 現在の都市のタイムゾーン補正(秒)を取得
+// 現在のタイムゾーン補正(秒)を取得（カスタム優先）
 long getCurrentTimezoneOffset() {
-    return CITIES[currentCityIndex].tzOffset;
+    return isCustomLocation() ? customTz : CITIES[currentCityIndex].tzOffset;
 }
 
 // 都市をインデックスで確定・保存する（UI/Webどちらからでも使える共通セッター）
-// 将来、WiFi設定画面のプルダウンから土地を選ぶ際にこの関数を呼ぶ想定。
+// プリセット都市を選ぶとカスタムモードは解除される。
 void setCityByIndex(int idx) {
     if (idx < 0 || idx >= CITY_COUNT) return;
     nextCityIndex = idx;
     currentCityIndex = idx;
+    locMode = 0;  // PRESETへ戻す
     saveSettings();
+}
+
+// カスタム場所（緯度経度・地名・TZ）を保存する（Web /save から呼ぶ）
+void setCustomLocation(const String& lat, const String& lon, const String& name, long tz) {
+    preferences.begin("weather_app", false);
+    preferences.putInt("loc_mode", 1);
+    preferences.putString("lat", lat);
+    preferences.putString("lon", lon);
+    preferences.putString("loc_name", name);
+    preferences.putLong("tz_offset", tz);
+    preferences.end();
+    locMode = 1; customLat = lat; customLon = lon; customName = name; customTz = tz;
+}
+
+// ビープ音量を循環（小→中→大→OFF→…）して保存・反映する
+void cycleBeepVolume() {
+    beepVolIndex = (beepVolIndex + 1) % BEEP_PRESET_COUNT;
+    preferences.begin("weather_app", false);
+    preferences.putInt("beep_idx", beepVolIndex);
+    preferences.end();
+    applyBeepVolume();
+    if (currentBeepVolume() > 0) M5.Speaker.tone(BEEP_FREQ, BEEP_DURATION);  // 確認音
 }
 
 // 設定画面表示
@@ -155,6 +217,7 @@ void selectNextCity() {
 
 void setCurrentCity() {
     currentCityIndex = nextCityIndex;
+    locMode = 0;  // プリセット都市を確定 → カスタムモード解除
     saveSettings();
     showSettingsScreen();  // 画面を再描画
     M5.Speaker.tone(BEEP_FREQ, BEEP_DURATION);

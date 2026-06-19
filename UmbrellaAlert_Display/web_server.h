@@ -29,6 +29,7 @@ extern DeviceMode deviceMode;
 // 外部関数の宣言
 extern void updateNetworkList();
 extern void resetSettings();
+extern void setCustomLocation(const String& lat, const String& lon, const String& name, long tz);
 
 // ==== ユーティリティ関数 ====
 
@@ -185,6 +186,31 @@ void startWebServer() {
             s += "<div class='success'>WiFi設定をリセットしました。<br>デバイス再起動後、本体の指示に従って接続設定を行って下さい。</div>";
             webServer.send(200, "text/html", makePage("リセット", s));
             resetSettings();
+        });
+
+        // カスタム場所の保存（外部GitHub Pages設定ページからの送信を受ける）
+        // GET /save?lat=..&lon=..&name=..&tz=..
+        webServer.on("/save", []() {
+            if (!webServer.hasArg("lat") || !webServer.hasArg("lon")) {
+                webServer.sendHeader("Access-Control-Allow-Origin", "*");
+                webServer.send(400, "text/plain", "missing lat/lon");
+                return;
+            }
+            String lat  = webServer.arg("lat");
+            String lon  = webServer.arg("lon");
+            String name = urlDecode(webServer.arg("name"));
+            long   tz   = webServer.hasArg("tz") ? (long)webServer.arg("tz").toInt() : (long)DEFAULT_TIMEZONE_OFFSET;
+
+            Serial.printf("場所設定を受信: lat=%s lon=%s name=%s tz=%ld\n",
+                          lat.c_str(), lon.c_str(), name.c_str(), tz);
+
+            setCustomLocation(lat, lon, name, tz);
+
+            // HTTPS(外部ページ)→HTTP(本体)のためCORSヘッダを付与（no-cors時は無視されるが害なし）
+            webServer.sendHeader("Access-Control-Allow-Origin", "*");
+            webServer.send(200, "text/plain", "OK");
+            delay(500);
+            ESP.restart();  // 反映のため再起動
         });
     }
     webServer.begin();
