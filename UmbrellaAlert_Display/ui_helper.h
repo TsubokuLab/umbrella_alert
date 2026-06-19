@@ -3,6 +3,7 @@
 #ifndef UI_HELPER_H
 #define UI_HELPER_H
 
+#include <LittleFS.h>      // M5Unifiedより前にインクルードする必要がある
 #include <M5Unified.h>
 #include "weather.h"
 #include "config.h"
@@ -18,8 +19,8 @@ void showMainScreen(bool willRain, float rainProbability, float temperature, flo
 void showDetailScreen(float temperature, float humidity, float windSpeed, String weatherDesc);
 void showLoadingScreen();
 void showErrorScreen(String message);
-bool drawPngFromSpiffs(const String& path, int16_t x, int16_t y);
-bool drawPngFromSpiffs(const char* path, int16_t x, int16_t y);
+bool drawPngFromLittleFS(const String& path, int16_t x, int16_t y);
+bool drawPngFromLittleFS(const char* path, int16_t x, int16_t y);
 
 // 仮想ボタンの描画（画面下部のタッチボタン）
 void drawVirtualButtons(String btnA, String btnB, String btnC) {
@@ -91,7 +92,7 @@ void showMainScreen(bool willRain, float rainProbability, float temperature, flo
         canvas.drawString("傘は不要です", width/2, 10);
     }
     // PNG表示を試みる
-    drawPngFromSpiffs(_iconPath, width/2 - 64 - 70, height/2 - 64 - 0);
+    drawPngFromLittleFS(_iconPath, width/2 - 64 - 70, height/2 - 64 - 0);
     canvas.setFont(&fonts::lgfxJapanGothicP_20);
 
     // 都市名表示（追加部分）
@@ -229,7 +230,7 @@ void showForecastScreen(DynamicJsonDocument doc, bool willRain){
         canvas.setTextDatum(TR_DATUM);
         canvas.drawString(String(tm.Hour) + "時", 120, itemY);
         // PNG表示を試みる
-        drawPngFromSpiffs("/resize/" + _iconPath + ".png", 122, itemY);
+        drawPngFromLittleFS("/resize/" + _iconPath + ".png", 122, itemY);
         canvas.setTextDatum(TC_DATUM);
         canvas.drawString(translate_weather(main), 175, itemY);
         canvas.setTextDatum(TL_DATUM);
@@ -288,12 +289,12 @@ void showErrorScreen(String message) {
 }
 
 // String型または const char* 型を受け付ける関数（オーバーロード）
-bool drawPngFromSpiffs(const String& path, int16_t x, int16_t y) {
-    return drawPngFromSpiffs(path.c_str(), x, y);  // 既存のconst char*バージョンを呼び出す
+bool drawPngFromLittleFS(const String& path, int16_t x, int16_t y) {
+    return drawPngFromLittleFS(path.c_str(), x, y);  // 既存のconst char*バージョンを呼び出す
 }
-// SPIFFSからPNGを読み込んで表示するヘルパー関数
-bool drawPngFromSpiffs(const char* path, int16_t x, int16_t y) {
-    auto file = SPIFFS.open(path, "r");
+// LittleFSからPNGを読み込んで表示するヘルパー関数
+bool drawPngFromLittleFS(const char* path, int16_t x, int16_t y) {
+    auto file = LittleFS.open(path, "r");
     if (!file) {
         Serial.printf("ファイルが開けません: %s\n", path);
         return false;

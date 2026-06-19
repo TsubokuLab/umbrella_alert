@@ -1,6 +1,7 @@
 // umbrella_alert.ino - お出かけ傘アラート
 // 12時間以内の雨予報をチェックして、傘が必要かどうかを表示
 
+#include <LittleFS.h>      // M5Unifiedより前にインクルードする必要がある
 #include <M5Unified.h>
 #include <WiFi.h>
 #include <ESPmDNS.h>
@@ -9,7 +10,6 @@
 #include <WebServer.h>
 #include <ArduinoJson.h>
 #include <Adafruit_NeoPixel.h>
-#include <SPIFFS.h>
 #include <Preferences.h>
 
 #include "config.h"
@@ -267,12 +267,12 @@ void drawConnectionStatus() {
 // ===== セットアップ =====
 void setup() {
     // ファイル初期化
-    if (!SPIFFS.begin(true)) {  // trueを渡すとフォーマットも行う
-        Serial.println("SPIFFS マウント失敗");
+    if (!LittleFS.begin(true)) {  // trueを渡すとフォーマットも行う
+        Serial.println("LittleFS マウント失敗");
     } else {
-        Serial.println("SPIFFS マウント成功");
-        // SPIFFSの内容を確認
-        File root = SPIFFS.open("/");
+        Serial.println("LittleFS マウント成功");
+        // LittleFSの内容を確認
+        File root = LittleFS.open("/");
         File file = root.openNextFile();
         while (file) {
             Serial.print("ファイル: ");
