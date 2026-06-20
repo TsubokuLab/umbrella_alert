@@ -44,10 +44,17 @@
     font-size:16px;transition:border-color .2s;
   }
   input[type=text]:focus{outline:none;border-color:var(--primary-start);}
-  /* 緯度経度: 地図右下直下にコンパクト表示（枠なし） */
+  /* 地図直下の1行: 小さい現在地ボタン（左） + 緯度経度（右） */
+  .actionrow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:6px 2px 8px 0;}
+  .btn-sm{
+    flex:none;padding:8px 12px;border-radius:10px;border:2px solid var(--primary-start);
+    background:#fff;color:var(--primary-end);font-size:13px;font-weight:700;
+    cursor:pointer;white-space:nowrap;
+  }
+  .btn-sm:active{transform:translateY(1px);}
   .coordline{
-    text-align:right;font-size:12px;color:#6b7280;
-    margin:4px 2px 8px 0;word-break:break-all;font-variant-numeric:tabular-nums;
+    flex:1;text-align:right;font-size:12px;color:#6b7280;
+    word-break:break-all;font-variant-numeric:tabular-nums;
   }
   .btn{
     width:100%;padding:16px;border:none;border-radius:12px;
@@ -88,9 +95,10 @@
       </svg>
     </div>
   </div>
-  <div class="coordline" id="coordVal">—</div>
-
-  <button class="btn secondary" id="gpsBtn">📍 現在地へ移動</button>
+  <div class="actionrow">
+    <button class="btn-sm" id="gpsBtn">📍 現在地へ移動</button>
+    <div class="coordline" id="coordVal">—</div>
+  </div>
 
   <label for="name">地名（任意・自動入力されます。編集できます）</label>
   <input type="text" id="name" placeholder="例: 自宅 / 渋谷">
@@ -109,6 +117,7 @@
 
   // ---- 状態（地図中心が常に選択地点） ----
   let lat = 35.681236, lon = 139.767125;   // 既定: 東京駅付近
+  let geoTimer = null;                      // 逆ジオコーディングのデバウンス用
   const tzOffsetSec = -new Date().getTimezoneOffset() * 60; // 端末TZ(秒)を既定で送る
 
   const $ = (id) => document.getElementById(id);
@@ -180,7 +189,6 @@
 
   // ---- 逆ジオコーディングで地名を自動入力（best-effort, Nominatim） ----
   // ユーザーが手編集していない場合のみ入力欄を更新する。
-  let geoTimer = null;
   function reverseGeocode(la, lo){
     if (nameInput.dataset.userEdited === "1") return;
     clearTimeout(geoTimer);
