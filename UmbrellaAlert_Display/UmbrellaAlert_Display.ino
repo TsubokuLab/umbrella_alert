@@ -203,13 +203,15 @@ void drawSettingsPage(){
     itemY += itemHeight * 2;
     
     // 場所設定ページ（外部GitHub Pages）へのQRコード。?ip=で本体IPを渡す
+    int qr_x = width - qr_size - spacing;
     String _setting_url = String(SETUP_PAGE_URL) + "?ip=" + WiFi.localIP().toString();
-    canvas.qrcode(_setting_url, width - qr_size - spacing, height - 40 - qr_size - spacing, qr_size, 5);
+    canvas.qrcode(_setting_url, qr_x, height - 40 - qr_size - spacing, qr_size, 5);
     canvas.setTextDatum(TL_DATUM);
     canvas.drawString("■スマホで場所設定", itemX, itemY);
     itemY += itemHeight;
-    canvas.setFont(&fonts::lgfxJapanGothicP_12);  // URLは長いので小さめ
-    canvas.drawString(_setting_url, itemX, itemY);
+    // URLは長いのでQRの手前で折り返して描画
+    canvas.setFont(&fonts::lgfxJapanGothicP_12);
+    drawWrappedText(_setting_url, itemX, itemY, qr_x - spacing, 14);
     canvas.setFont(&fonts::lgfxJapanGothicP_16);
 
     drawVolumeButton();
@@ -218,10 +220,28 @@ void drawSettingsPage(){
     canvas.pushSprite(&M5.Display, 0, 0);
 }
 
-// 設定画面の音量ボタンの矩形（QRコードの上に配置）
+// テキストを maxRight を超えない幅で折り返して描画（現在のフォントで計測）。戻り値は最後の行のy
+int drawWrappedText(const String& text, int x, int y, int maxRight, int lineH){
+    canvas.setTextDatum(TL_DATUM);
+    String line = "";
+    for (int i = 0; i < (int)text.length(); i++){
+        String test = line + text[i];
+        if (line.length() > 0 && x + canvas.textWidth(test.c_str()) > maxRight){
+            canvas.drawString(line, x, y);
+            y += lineH;
+            line = String(text[i]);
+        } else {
+            line = test;
+        }
+    }
+    if (line.length() > 0) canvas.drawString(line, x, y);
+    return y;
+}
+
+// 設定画面の音量ボタンの矩形（QRコードの上に配置・コンパクト）
 void volumeButtonRect(int& x, int& y, int& w, int& h){
     const int spacing = 10, qr_size = 80;
-    w = 130; h = 32;
+    w = 66; h = 26;  // 横幅半分・縦0.8倍
     x = width - w - spacing;
     y = (height - 40 - qr_size - spacing) - h - spacing;
 }
@@ -229,12 +249,13 @@ void volumeButtonRect(int& x, int& y, int& w, int& h){
 // 設定画面の音量ボタンを描画（小/中/大/OFF）
 void drawVolumeButton(){
     int x, y, w, h; volumeButtonRect(x, y, w, h);
-    canvas.fillRoundRect(x, y, w, h, 8, BTN_BG_COLOR);
-    canvas.setFont(&fonts::lgfxJapanGothicP_16);
+    canvas.fillRoundRect(x, y, w, h, 6, BTN_BG_COLOR);
+    canvas.setFont(&fonts::lgfxJapanGothicP_12);
     canvas.setTextSize(1.0 * FONT_SCALE);
     canvas.setTextDatum(MC_DATUM);
     canvas.setTextColor(BTN_TEXT_COLOR);
-    canvas.drawString("音量: " + String(currentBeepLabel()), x + w / 2, y + h / 2);
+    canvas.drawString("音量:" + String(currentBeepLabel()), x + w / 2, y + h / 2);
+    canvas.setFont(&fonts::lgfxJapanGothicP_16);
 }
 
 // 接続状態表示の更新（右上の点滅アイコン）

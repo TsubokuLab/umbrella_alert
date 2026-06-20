@@ -218,10 +218,15 @@
   $("sendBtn").addEventListener("click", () => {
     if (!deviceIp) { showStatus("err", "本体IPが未指定です"); return; }
     const url = buildSaveUrl();
-    // HTTPSページからの fetch/no-cors は Mixed Content でブロックされるため使わない。
-    // リンククリックと同じ「トップレベル遷移」で本体の /save を開く（これは許可される）。
-    showStatus("ok", "本体へ送信します…（保存後に本体が再起動します）");
-    window.location.href = url;
+    // HTTPSページからの fetch/img 等の背景送信は Mixed Content でブロックされる。
+    // このページは遷移させず、別タブで本体の /save を開く（トップレベル遷移は許可される）。
+    // 本体の確認ページは自動で閉じるため、別タブは一瞬表示されてすぐ閉じる。
+    const w = window.open(url, "_blank");
+    if (!w) {  // ポップアップがブロックされた場合は現在タブで遷移にフォールバック
+      window.location.href = url;
+      return;
+    }
+    showStatus("ok", "本体へ送信しました。本体が再起動して反映します（数十秒）。");
   });
 
   function showStatus(type, msg){

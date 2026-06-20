@@ -210,7 +210,9 @@ void startWebServer() {
             String disp = name.length() > 0 ? name : (lat + ", " + lon);
             String s = "<h1>✅ 保存しました</h1>";
             s += "<div class='success'>場所を保存しました: <strong>" + disp + "</strong><br>";
-            s += "本体が再起動して反映します（数十秒）。このページは閉じて構いません。</div>";
+            s += "本体が再起動して反映します（数十秒）。このタブは自動で閉じます。</div>";
+            // 設定ページから別タブ(window.open)で開かれた場合、表示後に自動で閉じる
+            s += "<script>setTimeout(function(){window.close();},1500);</script>";
             webServer.sendHeader("Access-Control-Allow-Origin", "*");
             webServer.send(200, "text/html", makePage("保存完了", s));
             delay(500);
