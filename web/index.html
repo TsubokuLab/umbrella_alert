@@ -38,20 +38,17 @@
     position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
     pointer-events:none;z-index:1000;
   }
-  .hint{text-align:center;font-size:12px;color:#6b7280;margin:-4px 0 12px;}
   label{display:block;font-weight:600;font-size:14px;margin:10px 0 6px;color:#374151;}
   input[type=text]{
     width:100%;padding:14px;border:2px solid #e2e8f0;border-radius:12px;
     font-size:16px;transition:border-color .2s;
   }
   input[type=text]:focus{outline:none;border-color:var(--primary-start);}
-  .readout{
-    background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;
-    padding:14px;margin-top:12px;margin-bottom:6px;
+  /* 緯度経度: 地図右下直下にコンパクト表示（枠なし） */
+  .coordline{
+    text-align:right;font-size:12px;color:#6b7280;
+    margin:4px 2px 8px 0;word-break:break-all;font-variant-numeric:tabular-nums;
   }
-  .readout .row{display:flex;justify-content:space-between;gap:12px;padding:4px 0;font-size:15px;}
-  .readout .label{color:#6b7280;}
-  .readout .value{font-weight:700;color:#111827;text-align:right;word-break:break-all;}
   .btn{
     width:100%;padding:16px;border:none;border-radius:12px;
     font-size:16px;font-weight:700;cursor:pointer;margin-top:14px;
@@ -72,10 +69,10 @@
 </head>
 <body>
 <div class="container">
+  <div class="device" id="deviceInfo">本体IPを確認中…</div>
+
   <h1>☂️ 場所の設定</h1>
   <div class="sub">地図を動かして、知りたい場所を中央の照準に合わせてください</div>
-
-  <div class="device" id="deviceInfo">本体IPを確認中…</div>
 
   <div class="map-wrap">
     <div id="map"></div>
@@ -91,18 +88,14 @@
       </svg>
     </div>
   </div>
-  <div class="hint">中央の照準が選択地点です</div>
+  <div class="coordline" id="coordVal">—</div>
 
   <button class="btn secondary" id="gpsBtn">📍 現在地へ移動</button>
 
   <label for="name">地名（任意・自動入力されます。編集できます）</label>
   <input type="text" id="name" placeholder="例: 自宅 / 渋谷">
 
-  <div class="readout">
-    <div class="row"><span class="label">緯度経度</span><span class="value" id="coordVal">—</span></div>
-  </div>
-
-  <button class="btn" id="sendBtn">✅ この場所を本体に送信</button>
+  <button class="btn" id="sendBtn">✅ 本体に設定を保存</button>
 
   <div class="status" id="status"></div>
   <div class="manual" id="manual"></div>
