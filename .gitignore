@@ -1,0 +1,3 @@
+# 機密情報（APIキー等）はコミットしない
+# 各スケッチフォルダの secrets.h を無視（secrets.h.example はコミットする）
+secrets.h

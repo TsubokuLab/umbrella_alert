@@ -159,7 +159,7 @@ String generateFooter() {
     if(String(AUTHOR_URL) != ""){
         author_tag = "<a href='" + String(AUTHOR_URL) + "' target='_blank'>" + String(AUTHOR_NAME) + "</a>";
     }
-    footer += "© 2025 " + author_tag + ". All rights reserved.";
+    footer += "© 2026 " + author_tag + ". All rights reserved.";
     footer += "</div>";
     return footer;
 }

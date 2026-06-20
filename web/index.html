@@ -11,11 +11,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <style>
-  :root{
-    --primary-start:#667eea;
-    --primary-end:#764ba2;
-    --danger:#ef4444;
-  }
+  :root{ --primary-start:#667eea; --primary-end:#764ba2; }
   *{box-sizing:border-box;}
   body{
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
@@ -35,15 +31,21 @@
     border:1px solid rgba(102,126,234,0.25);border-radius:10px;
     padding:10px 12px;margin-bottom:14px;color:#1e40af;word-break:break-all;
   }
-  #map{height:300px;border-radius:14px;margin-bottom:12px;border:1px solid #e5e7eb;}
-  label{display:block;font-weight:600;font-size:14px;margin:12px 0 6px;color:#374151;}
-  input[type=text],input[type=number]{
-    width:100%;padding:14px;border:2px solid #e2e8f0;border-radius:12px;
-    font-size:16px;transition:border-color .2s;
+  .map-wrap{position:relative;margin-bottom:12px;}
+  #map{height:300px;border-radius:14px;border:1px solid #e5e7eb;}
+  /* 中央のレティクル（常に地図中心＝選択地点） */
+  .reticle{
+    position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    pointer-events:none;z-index:1000;
   }
-  input:focus{outline:none;border-color:var(--primary-start);}
-  .coords{display:flex;gap:10px;}
-  .coords>div{flex:1;}
+  .hint{text-align:center;font-size:12px;color:#6b7280;margin:-4px 0 12px;}
+  .readout{
+    background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;
+    padding:14px;margin-bottom:6px;
+  }
+  .readout .row{display:flex;justify-content:space-between;gap:12px;padding:4px 0;font-size:15px;}
+  .readout .label{color:#6b7280;}
+  .readout .value{font-weight:700;color:#111827;text-align:right;word-break:break-all;}
   .btn{
     width:100%;padding:16px;border:none;border-radius:12px;
     font-size:16px;font-weight:700;cursor:pointer;margin-top:14px;
@@ -52,7 +54,6 @@
   }
   .btn:active{transform:translateY(1px);}
   .btn.secondary{background:#fff;color:var(--primary-end);border:2px solid var(--primary-start);}
-  .btn:disabled{opacity:.5;cursor:not-allowed;}
   .status{margin-top:14px;padding:12px;border-radius:10px;font-size:14px;display:none;}
   .status.show{display:block;}
   .status.ok{background:rgba(34,197,94,.12);color:#166534;border:1px solid rgba(34,197,94,.3);}
@@ -66,26 +67,31 @@
 <body>
 <div class="container">
   <h1>☂️ 場所の設定</h1>
-  <div class="sub">傘通知アプリに天気を表示する場所を選びます</div>
+  <div class="sub">地図を動かして、知りたい場所を中央の照準に合わせてください</div>
 
   <div class="device" id="deviceInfo">本体IPを確認中…</div>
 
-  <div id="map"></div>
-
-  <button class="btn secondary" id="gpsBtn">📍 現在地を取得</button>
-
-  <label for="name">地名（表示名）</label>
-  <input type="text" id="name" placeholder="例: 自宅 / 渋谷">
-
-  <div class="coords">
-    <div>
-      <label for="lat">緯度</label>
-      <input type="number" id="lat" step="0.000001" placeholder="35.681">
+  <div class="map-wrap">
+    <div id="map"></div>
+    <div class="reticle" aria-hidden="true">
+      <svg width="44" height="44" viewBox="0 0 44 44">
+        <circle cx="22" cy="22" r="12" fill="none" stroke="#764ba2" stroke-width="3"/>
+        <circle cx="22" cy="22" r="12" fill="none" stroke="#ffffff" stroke-width="1"/>
+        <line x1="22" y1="2"  x2="22" y2="14" stroke="#764ba2" stroke-width="3"/>
+        <line x1="22" y1="30" x2="22" y2="42" stroke="#764ba2" stroke-width="3"/>
+        <line x1="2"  y1="22" x2="14" y2="22" stroke="#764ba2" stroke-width="3"/>
+        <line x1="30" y1="22" x2="42" y2="22" stroke="#764ba2" stroke-width="3"/>
+        <circle cx="22" cy="22" r="2.5" fill="#764ba2"/>
+      </svg>
     </div>
-    <div>
-      <label for="lon">経度</label>
-      <input type="number" id="lon" step="0.000001" placeholder="139.767">
-    </div>
+  </div>
+  <div class="hint">中央の照準が選択地点です</div>
+
+  <button class="btn secondary" id="gpsBtn">📍 現在地へ移動</button>
+
+  <div class="readout">
+    <div class="row"><span class="label">地名</span><span class="value" id="nameVal">—</span></div>
+    <div class="row"><span class="label">緯度経度</span><span class="value" id="coordVal">—</span></div>
   </div>
 
   <button class="btn" id="sendBtn">✅ この場所を本体に送信</button>
@@ -93,84 +99,85 @@
   <div class="status" id="status"></div>
   <div class="manual" id="manual"></div>
 
-  <div class="footer">© 2025 Umbrella Alert</div>
+  <div class="footer">© <span id="year"></span> Umbrella Alert</div>
 </div>
 
 <script>
 (function(){
   "use strict";
 
-  // ---- 状態 ----
-  // 既定は東京駅付近
-  let lat = 35.681236, lon = 139.767125;
-  const tzOffsetSec = -new Date().getTimezoneOffset() * 60; // 端末のTZ(秒)を既定として送る
+  // ---- 状態（地図中心が常に選択地点） ----
+  let lat = 35.681236, lon = 139.767125;   // 既定: 東京駅付近
+  let placeName = "";
+  const tzOffsetSec = -new Date().getTimezoneOffset() * 60; // 端末TZ(秒)を既定で送る
 
-  // ---- 要素 ----
   const $ = (id) => document.getElementById(id);
-  const latInput = $("lat"), lonInput = $("lon"), nameInput = $("name");
+  const nameVal = $("nameVal"), coordVal = $("coordVal");
   const statusEl = $("status"), manualEl = $("manual");
 
-  // ---- 本体IPの取得（?ip=192.168.x.x）----
+  // フッターの年（今年を自動表示）
+  $("year").textContent = new Date().getFullYear();
+
+  // ---- 本体IP（?ip=192.168.x.x） ----
   const params = new URLSearchParams(location.search);
   let deviceIp = params.get("ip") || "";
-  function renderDeviceInfo(){
+  (function renderDeviceInfo(){
     if (deviceIp) {
       $("deviceInfo").innerHTML = "送信先デバイス: <strong>" + deviceIp + "</strong>";
     } else {
       $("deviceInfo").innerHTML =
         "⚠️ 本体IPがURLにありません。本体のQRから開き直すか、IPを手入力してください:" +
-        "<br><input type='text' id='ipManual' placeholder='192.168.x.x' style='margin-top:8px'>";
-      // 手入力監視
-      setTimeout(()=>{
+        "<br><input type='text' id='ipManual' placeholder='192.168.x.x' " +
+        "style='margin-top:8px;width:100%;padding:10px;border:2px solid #e2e8f0;border-radius:10px;font-size:16px'>";
+      setTimeout(() => {
         const m = $("ipManual");
         if (m) m.addEventListener("input", e => { deviceIp = e.target.value.trim(); });
       }, 0);
     }
-  }
-  renderDeviceInfo();
+  })();
 
-  // ---- 地図（Leaflet）----
+  // ---- 地図（中心がレティクル＝選択地点） ----
   const map = L.map("map").setView([lat, lon], 14);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19,
-    attribution: "© OpenStreetMap contributors"
+    maxZoom: 19, attribution: "© OpenStreetMap contributors"
   }).addTo(map);
 
-  const marker = L.marker([lat, lon], { draggable: true }).addTo(map);
+  function fmt(n){ return n.toFixed(6); }
+  function updateCoordsDisplay(){ coordVal.textContent = fmt(lat) + ", " + fmt(lon); }
 
-  function setCoords(newLat, newLon, fly){
-    lat = newLat; lon = newLon;
-    latInput.value = lat.toFixed(6);
-    lonInput.value = lon.toFixed(6);
-    marker.setLatLng([lat, lon]);
-    if (fly) map.setView([lat, lon], Math.max(map.getZoom(), 14));
+  // 地図移動中: 座標をライブ更新（軽い処理のみ）
+  map.on("move", () => {
+    const c = map.getCenter(); lat = c.lat; lon = c.lng;
+    updateCoordsDisplay();
+  });
+  // 移動完了: 地名を逆ジオコーディングで取得（負荷を抑えるためここだけ）
+  map.on("moveend", () => {
+    const c = map.getCenter(); lat = c.lat; lon = c.lng;
+    updateCoordsDisplay();
     reverseGeocode(lat, lon);
-  }
-  setCoords(lat, lon, false);
+  });
 
-  // 地図タップでピン移動
-  map.on("click", e => setCoords(e.latlng.lat, e.latlng.lng, false));
-  // ピンのドラッグ
-  marker.on("dragend", () => { const p = marker.getLatLng(); setCoords(p.lat, p.lng, false); });
-  // 緯度経度の手入力を反映
-  latInput.addEventListener("change", () => setCoords(parseFloat(latInput.value)||lat, lon, true));
-  lonInput.addEventListener("change", () => setCoords(lat, parseFloat(lonInput.value)||lon, true));
+  // 初期表示
+  updateCoordsDisplay();
+  reverseGeocode(lat, lon);
 
-  // ---- 現在地取得（GPS / Geolocation）----
+  // ---- 現在地へ移動（GPS） ----
   $("gpsBtn").addEventListener("click", () => {
     if (!navigator.geolocation) { showStatus("err", "この端末は位置情報に対応していません"); return; }
     showStatus("warn", "現在地を取得中…（許可を求められたら許可してください）");
     navigator.geolocation.getCurrentPosition(
-      pos => { setCoords(pos.coords.latitude, pos.coords.longitude, true); showStatus("ok", "現在地を取得しました"); },
+      pos => {
+        map.flyTo([pos.coords.latitude, pos.coords.longitude], 15);
+        showStatus("ok", "現在地へ移動しました。照準を微調整できます。");
+      },
       err => { showStatus("err", "現在地の取得に失敗: " + err.message); },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   });
 
-  // ---- 逆ジオコーディングで地名を自動補完（best-effort, Nominatim）----
+  // ---- 逆ジオコーディングで地名を表示（best-effort, Nominatim） ----
   let geoTimer = null;
   function reverseGeocode(la, lo){
-    if (nameInput.dataset.userEdited === "1") return; // ユーザーが手入力したら上書きしない
     clearTimeout(geoTimer);
     geoTimer = setTimeout(async () => {
       try {
@@ -179,19 +186,17 @@
         const r = await fetch(url, { headers: { "Accept": "application/json" } });
         const d = await r.json();
         const a = d.address || {};
-        const name = a.city || a.town || a.village || a.suburb || a.county || d.name || "";
-        if (name && nameInput.dataset.userEdited !== "1") nameInput.value = name;
-      } catch (e) { /* 失敗しても無視（手入力でOK） */ }
+        placeName = a.city || a.town || a.village || a.suburb || a.county || d.name || "";
+      } catch (e) { placeName = ""; }
+      nameVal.textContent = placeName || "（取得できませんでした）";
     }, 600);
   }
-  nameInput.addEventListener("input", () => { nameInput.dataset.userEdited = "1"; });
 
-  // ---- 送信 ----
+  // ---- 送信（地名は未入力＝空でも可） ----
   function buildSaveUrl(){
     const q = new URLSearchParams({
-      lat: lat.toFixed(6),
-      lon: lon.toFixed(6),
-      name: nameInput.value || "",
+      lat: fmt(lat), lon: fmt(lon),
+      name: placeName || "",
       tz: String(tzOffsetSec)
     });
     return "http://" + deviceIp + "/save?" + q.toString();
@@ -201,21 +206,18 @@
     if (!deviceIp) { showStatus("err", "本体IPが未指定です"); return; }
     const url = buildSaveUrl();
 
-    // 注意: HTTPS(本ページ) → HTTP(本体) は Mixed Content でブロックされる場合がある。
-    // no-cors fetch と 画像ビーコンの両方を試し、ダメな時のために手動URLも提示する。
+    // HTTPS(本ページ)→HTTP(本体) は Mixed Content でブロックされる場合があるため、
+    // no-cors fetch と 画像ビーコンの両方を試し、手動URLも提示する。
     let settled = false;
     const done = () => { if (settled) return; settled = true;
       showStatus("ok", "送信しました。本体が再起動して反映します（数十秒）。");
     };
-
     try { fetch(url, { mode: "no-cors" }).then(done).catch(()=>{}); } catch(e){}
     try { const img = new Image(); img.onload = done; img.src = url; } catch(e){}
 
-    // 念のため手動フォールバックを常時表示
     manualEl.innerHTML = "うまく反映されない場合は、本体と同じWi-Fiに繋いだ状態で次のURLを開いてください:<br>"
       + "<a href='" + url + "' target='_blank' rel='noopener'>" + url + "</a>";
-
-    showStatus("warn", "送信を試みています…（HTTPS→HTTP制限でブロックされる場合は下のURLを開いてください）");
+    showStatus("warn", "送信を試みています…（ブロックされる場合は下のURLを開いてください）");
     setTimeout(done, 1500);
   });
 

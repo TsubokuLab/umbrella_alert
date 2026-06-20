@@ -139,10 +139,19 @@ UmbrellaAlert_Display/
 1. `UmbrellaAlert_M5NanoC6/UmbrellaAlert_M5NanoC6.ino` を開く
 2. ボード=M5NanoC6 を選び、**スケッチを書き込むだけ**（LittleFSアップロードは不要）
 
-### 4-3. WiFi / APIキーの初回設定
+### 4-3. APIキーの設定（secrets.h）※ビルド前に必須
+APIキー（とNanoC6版のWiFi資格情報）は**リポジトリに含めない**ため、各スケッチフォルダの
+`secrets.h.example` を **`secrets.h`** にコピーして自分の値を設定する。`secrets.h` は
+`.gitignore` 済みでコミットされない。
+- `UmbrellaAlert_Display/secrets.h` … `API_KEY`
+- `UmbrellaAlert_M5NanoC6/secrets.h` … `WIFI_SSID` / `WIFI_PASSWORD` / `API_KEY`
+
+> APIキーが未設定だとビルドは通っても天気取得に失敗する。キーは https://openweathermap.org/ で取得。
+
+### 4-4. WiFi / 場所の初回設定（LCD版）
 - 起動後、デバイスがAPモード（SSID: `Umbrella-Alert` / PASS: `12345678`）になる
 - スマホ等で接続し、表示されるQR/URL（`http://192.168.4.1`）から設定画面を開いてWiFiを登録
-- OpenWeatherMapのAPIキー・都市は [config.h](../UmbrellaAlert_Display/config.h) で定義（`API_KEY` / `CITY_*`）
+- 都市は本体の設定画面（プリセット）から選択。カスタム緯度経度は外部設定ページ（[SPEC.md](SPEC.md) 参照）
 
 ---
 

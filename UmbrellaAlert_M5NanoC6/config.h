@@ -10,11 +10,11 @@
 #define FONT_SCALE 1.0
 
 // ===== Wi-Fi設定 =====
-#define WIFI_SSID "telnet"         // Wi-FiのSSID
-#define WIFI_PASSWORD "19871222" // Wi-Fiのパスワード
+// WiFi資格情報とAPIキーは secrets.h で定義（リポジトリに含めない）。
+// secrets.h.example を secrets.h にコピーして設定すること。
+#include "secrets.h"
 
 // ===== OpenWeatherMap API設定 =====
-#define API_KEY "e46d15cf638864ba0b4e5dee3b873f2d"   // OpenWeatherMapのAPIキー
 #define CITY_ID "1850147"        // 都市ID (例: 1850147=東京)
 #define UNITS "metric"           // 温度単位 (metric=摂氏)
 #define LANGUAGE "ja"            // 言語設定 (ja=日本語)

@@ -64,7 +64,9 @@ enum ScreenMode {
 #define THEME_DANGER_END "#dc2626"
 
 // ===== OpenWeatherMap API設定 =====
-#define API_KEY "e46d15cf638864ba0b4e5dee3b873f2d"   // OpenWeatherMapのAPIキー
+// APIキーは secrets.h で定義（リポジトリには含めない）。
+// secrets.h.example を secrets.h にコピーしてキーを設定すること。
+#include "secrets.h"
 #define CITY_ID "1850147"        // 都市ID (例: 1850147=東京)
 #define UNITS "metric"           // 温度単位 (metric=摂氏)
 #define LANGUAGE "ja"            // 言語設定 (ja=日本語)
