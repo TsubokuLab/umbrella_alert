@@ -110,8 +110,8 @@ void showMainScreen(bool willRain, float rainProbability, float temperature, flo
         canvas.fillRect(0, height - 40 - _bold, width, _bold, WARNING_COLOR);
     }
 
-    // 操作ガイド
-    drawVirtualButtons("設定", "詳細", "都市");
+    // 操作ガイド（詳細ボタンは廃止）
+    drawVirtualButtons("設定", "", "都市");
     canvas.pushSprite(&M5.Display, 0, 0);
 }
 
@@ -151,12 +151,13 @@ void showDetailScreen(float temperature, float humidity, float windSpeed, String
     canvas.pushSprite(&M5.Display, 0, 0);
 }
 
-void showForecastScreen(DynamicJsonDocument& doc, bool willRain, long tzOffsetSec){
+void showForecastScreen(DynamicJsonDocument& doc, bool willRain, long tzOffsetSec, String cityNameOverride){
     currentScreen = FORECAST_PAGE;
     int width = M5.Display.width(); //320
     int height = M5.Display.height(); //240
 
-    String cityName = doc["city"]["name"].as<String>();
+    // カスタム地点では利用者の入力名を優先（空ならAPIの都市名）
+    String cityName = cityNameOverride.length() > 0 ? cityNameOverride : doc["city"]["name"].as<String>();
 
     canvas.fillScreen(willRain ? RAINY_COLOR : SUNNY_COLOR);
     
@@ -210,8 +211,8 @@ void showForecastScreen(DynamicJsonDocument& doc, bool willRain, long tzOffsetSe
         canvas.drawString("" + String(int(pop)) + "%", width - 10, itemY);
     }
     
-    // 操作ガイド（左下の戻るのみ）
-    drawVirtualButtons("戻る", "", "");
+    // 操作ガイド（メインと同配置。詳細ボタンは廃止）
+    drawVirtualButtons("設定", "", "都市");
 
     canvas.pushSprite(&M5.Display, 0, 0);
 }

@@ -87,7 +87,7 @@ void drawDisplay(){
                     showMainScreen(willRain, rainProbability, temperature, temperature_min, temperature_max, weatherIcon, cityName);
                     break;
                 case FORECAST_PAGE:
-                    showForecastScreen(doc, willRain, getCurrentTimezoneOffset());
+                    showForecastScreen(doc, willRain, getCurrentTimezoneOffset(), cityName);
                     break;
                 case SETTINGS_PAGE:
                     showSettingsScreen();
@@ -515,9 +515,9 @@ void A_Pressed(){
         case APP_MODE:
             switch(currentScreen){
                 case MAIN_PAGE:
+                case FORECAST_PAGE:
                     changeDeviceMode(SETTING_MODE);   // 設定（デバイス設定画面へ）
                     break;
-                case FORECAST_PAGE:
                 case DETAIL_PAGE:
                     changeScreenMode(MAIN_PAGE);       // 戻る
                     break;
@@ -536,16 +536,11 @@ void A_Pressed(){
     }
 }
 
-// ボタンB押下処理（中央ボタン）= メイン画面のみ「詳細」。他画面では無し。
+// ボタンB押下処理（中央ボタン）= アプリ画面では無し（詳細ボタンは廃止）。
 void B_Pressed(){
     Serial.println("B Button Pressed.");
 
     switch(deviceMode){
-        case APP_MODE:
-            if (currentScreen == MAIN_PAGE) {
-                changeScreenMode(DETAIL_PAGE);         // 詳細
-            }
-            break;
         case SETTING_MODE:
             rebootDevice();                            // 再起動
             break;
@@ -562,6 +557,7 @@ void C_Pressed(){
         case APP_MODE:
             switch(currentScreen){
                 case MAIN_PAGE:
+                case FORECAST_PAGE:
                     changeScreenMode(SETTINGS_PAGE);   // 都市設定へ
                     break;
                 case SETTINGS_PAGE:
