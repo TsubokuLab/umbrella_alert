@@ -74,20 +74,39 @@ void showMainScreen(bool willRain, float rainProbability, float temperature, flo
         static const char* const WDAYS[] = {"日", "月", "火", "水", "木", "金", "土"};
         char dateBuf[24];
         snprintf(dateBuf, sizeof(dateBuf), "%d/%d (%s)", tnow.tm_mon + 1, tnow.tm_mday, WDAYS[tnow.tm_wday]);
-        char timeBuf[8];
-        snprintf(timeBuf, sizeof(timeBuf), "%02d:%02d", tnow.tm_hour, tnow.tm_min);
+        char hh[3], mm[3];
+        snprintf(hh, sizeof(hh), "%02d", tnow.tm_hour);
+        snprintf(mm, sizeof(mm), "%02d", tnow.tm_min);
 
         uint16_t fg = willRain ? TFT_WHITE : NAVY_COLOR;
         uint16_t sh = willRain ? TFT_BLACK : TFT_WHITE;  // 影でアイコン上でも視認性を確保
+        const int shx = 3, shy = 3;  // 影オフセット
         canvas.setTextDatum(BL_DATUM);
+
         // 日付（M/D (曜)）
         canvas.setFont(&fonts::lgfxJapanGothicP_20);
-        canvas.setTextColor(sh); canvas.drawString(dateBuf, 11, height - 91);
-        canvas.setTextColor(fg); canvas.drawString(dateBuf, 10, height - 92);
-        // 時刻（HH:MM・大きめ）
+        canvas.setTextColor(sh); canvas.drawString(dateBuf, 10 + shx, height - 86 + shy);
+        canvas.setTextColor(fg); canvas.drawString(dateBuf, 10, height - 86);
+
+        // 時刻（HH:MM・大きめ）。コロンは0.5秒ごとに点滅。
+        // 時/コロン/分を分割して描画し、コロン非表示でも分がずれないようにする。
         canvas.setFont(&fonts::lgfxJapanGothicP_40);
-        canvas.setTextColor(sh); canvas.drawString(timeBuf, 11, height - 47);
-        canvas.setTextColor(fg); canvas.drawString(timeBuf, 10, height - 48);
+        const int tx = 10, ty = height - 44;
+        const int wHH = canvas.textWidth(hh);
+        const int wColon = canvas.textWidth(":");
+        const int mx = tx + wHH + wColon;
+        bool colonOn = (millis() / 500) % 2 == 0;
+        // 時
+        canvas.setTextColor(sh); canvas.drawString(hh, tx + shx, ty + shy);
+        canvas.setTextColor(fg); canvas.drawString(hh, tx, ty);
+        // コロン（点滅）
+        if (colonOn) {
+            canvas.setTextColor(sh); canvas.drawString(":", tx + wHH + shx, ty + shy);
+            canvas.setTextColor(fg); canvas.drawString(":", tx + wHH, ty);
+        }
+        // 分
+        canvas.setTextColor(sh); canvas.drawString(mm, mx + shx, ty + shy);
+        canvas.setTextColor(fg); canvas.drawString(mm, mx, ty);
     }
 
     canvas.setFont(&fonts::lgfxJapanGothicP_20);

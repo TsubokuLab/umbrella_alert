@@ -295,7 +295,7 @@ void setup() {
     height = M5.Display.height();
     
     // ディスプレイ初期設定
-    M5.Display.setColorDepth(8); // 8bitカラーを指定。必要であれば16に変更。
+    M5.Display.setColorDepth(16); // 16bitカラー(RGB565)。色の丸めを避けるため8bitから変更
     M5.Display.clear();
     M5.Display.setCursor(0, 0);
     M5.Display.setBrightness(SCREEN_BRIGHTNESS);  // 画面の明るさを設定
@@ -304,7 +304,7 @@ void setup() {
     M5.Display.setTextSize(1.0 * FONT_SCALE);
     
     // キャンバス初期設定
-    canvas.setColorDepth(8); // 8bitカラーを指定。必要であれば16に変更。
+    canvas.setColorDepth(16); // 16bitカラー(RGB565)。色の丸めを避けるため8bitから変更
     canvas.createSprite(width, height);
     canvas.clear(LCD_BG_COLOR);
     canvas.setFont(&fonts::lgfxJapanGothicP_16);
