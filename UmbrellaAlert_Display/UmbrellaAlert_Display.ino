@@ -202,13 +202,15 @@ void drawSettingsPage(){
     canvas.drawString("IPアドレス: " + WiFi.localIP().toString(), itemX, itemY);
     itemY += itemHeight * 2;
     
-    // 設定ページへのQRコード
-    String _setting_url = "http://" + WiFi.localIP().toString();
+    // 場所設定ページ（外部GitHub Pages）へのQRコード。?ip=で本体IPを渡す
+    String _setting_url = String(SETUP_PAGE_URL) + "?ip=" + WiFi.localIP().toString();
     canvas.qrcode(_setting_url, width - qr_size - spacing, height - 40 - qr_size - spacing, qr_size, 5);
     canvas.setTextDatum(TL_DATUM);
-    canvas.drawString("■設定ページ", itemX, itemY);
+    canvas.drawString("■スマホで場所設定", itemX, itemY);
     itemY += itemHeight;
+    canvas.setFont(&fonts::lgfxJapanGothicP_12);  // URLは長いので小さめ
     canvas.drawString(_setting_url, itemX, itemY);
+    canvas.setFont(&fonts::lgfxJapanGothicP_16);
 
     drawVolumeButton();
     drawConnectionStatus();
@@ -457,6 +459,7 @@ void changeScreenMode(ScreenMode _mode, bool _isBeep){
             break;
         case SETTINGS_PAGE:
             Serial.println("設定画面を表示");
+            nextSel = currentSelectionIndex();  // 入場時に現在の選択へ同期
             break;
         case DETAIL_PAGE:
             Serial.println("詳細画面を表示");

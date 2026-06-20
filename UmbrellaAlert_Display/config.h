@@ -35,6 +35,9 @@ enum ScreenMode {
 #define WIFI_CHECK_INTERVAL 5000                       // WiFi接続確認間隔（ミリ秒）
 #define WIFI_RECONNECT_ATTEMPTS 10                     // 再接続試行回数
 
+// 外部の場所設定ページ（GitHub Pages）。本体の設定画面QRはこのURL?ip=<本体IP>を指す
+#define SETUP_PAGE_URL "https://tsubokulab.github.io/umbrella_alert/"
+
 // ===== UI設定 =====
 #define CONTAINER_MAX_WIDTH "480px"                     // 設定画面最大幅
 #define BORDER_RADIUS "20px"                            // 角の丸み
@@ -89,7 +92,7 @@ enum ScreenMode {
 #define BEEP_OFF    0
 #define BEEP_SMALL  32
 #define BEEP_MEDIUM 64
-#define BEEP_LARGE  200
+#define BEEP_LARGE  96
 // 使用する音量をここで選択（BEEP_OFF / BEEP_SMALL / BEEP_MEDIUM / BEEP_LARGE）
 #define BEEP_VOLUME BEEP_SMALL
 #define BEEP_FREQ 3000           // 周波数 (Hz)

@@ -7,12 +7,11 @@
 #include <Preferences.h>
 #include "config.h"
 
-// 都市選択インデックス
+// 都市選択インデックス（画面の行数都合で名古屋は削除。カスタム地点を1行追加するため）
 enum CityIndex {
 //    INDEX_AUTO = 0,
     INDEX_SAPPORO,
     INDEX_TOKYO,
-    INDEX_NAGOYA,
     INDEX_OSAKA,
     INDEX_FUKUOKA,
     INDEX_NAHA,
@@ -31,15 +30,15 @@ const CityInfo CITIES[CITY_COUNT] = {
     // {CITY_AUTO, "自動検出", DEFAULT_TIMEZONE_OFFSET},
     {CITY_SAPPORO, "札幌",   9 * 3600},
     {CITY_TOKYO,   "東京",   9 * 3600},
-    {CITY_NAGOYA,  "名古屋", 9 * 3600},
     {CITY_OSAKA,   "大阪",   9 * 3600},
     {CITY_FUKUOKA, "福岡",   9 * 3600},
     {CITY_NAHA,    "那覇",   9 * 3600}
 };
 
-// 現在選択されている都市インデックス
+// 現在選択されている都市インデックス（プリセット内）
 int currentCityIndex = INDEX_TOKYO;  // デフォルトは東京
-int nextCityIndex = INDEX_TOKYO;  // デフォルトは東京
+// 都市設定画面で仮選択中の項目（結合リスト上のインデックス。0=カスタムが存在する場合）
+int nextSel = 0;
 extern M5Canvas canvas;
 extern ScreenMode currentScreen;
 extern void drawVirtualButtons(String btnA, String btnB, String btnC);
@@ -52,8 +51,26 @@ String customLon  = "";
 String customName = "";
 long   customTz   = DEFAULT_TIMEZONE_OFFSET;
 
+// カスタム場所(緯度経度)が保存されているか（locModeに依らず、座標が存在するか）
+bool hasCustomLocation() {
+    return customLat.length() > 0 && customLon.length() > 0;
+}
 bool isCustomLocation() {
-    return locMode == 1 && customLat.length() > 0 && customLon.length() > 0;
+    return locMode == 1 && hasCustomLocation();
+}
+
+// ===== 都市設定画面の選択リスト（先頭にカスタム地点、その後にプリセット都市） =====
+int  selectionOffset() { return hasCustomLocation() ? 1 : 0; }       // カスタム分のずれ
+int  selectionCount()  { return selectionOffset() + CITY_COUNT; }    // 表示行数
+bool selIsCustom(int sel) { return hasCustomLocation() && sel == 0; }
+String selectionName(int sel) {
+    if (selIsCustom(sel)) return "★ " + (customName.length() > 0 ? customName : String("カスタム地点"));
+    return String(CITIES[sel - selectionOffset()].name);
+}
+// 現在の実際の選択を結合インデックスへ変換
+int currentSelectionIndex() {
+    if (isCustomLocation()) return 0;  // hasCustom前提でlocMode==1
+    return selectionOffset() + currentCityIndex;
 }
 
 // ===== ビープ音量（プリセットをタップで循環・保存）=====
@@ -80,7 +97,6 @@ void loadSettings() {
     if (currentCityIndex < 0 || currentCityIndex >= CITY_COUNT) {
         currentCityIndex = INDEX_TOKYO;  // 範囲外の場合はデフォルトに戻す
     }
-    nextCityIndex = currentCityIndex;
     // 場所モード・カスタム座標
     locMode    = preferences.getInt("loc_mode", 0);
     customLat  = preferences.getString("lat", "");
@@ -91,12 +107,12 @@ void loadSettings() {
     beepVolIndex = preferences.getInt("beep_idx", defaultBeepIndex());
     if (beepVolIndex < 0 || beepVolIndex >= BEEP_PRESET_COUNT) beepVolIndex = defaultBeepIndex();
     preferences.end();
+    nextSel = currentSelectionIndex();
 }
 
 // 設定の保存（都市インデックスと場所モード）
 void saveSettings() {
     preferences.begin("weather_app", false);
-    currentCityIndex = nextCityIndex;
     preferences.putInt("city_index", currentCityIndex);
     preferences.putInt("loc_mode", locMode);
     preferences.end();
@@ -112,14 +128,14 @@ long getCurrentTimezoneOffset() {
     return isCustomLocation() ? customTz : CITIES[currentCityIndex].tzOffset;
 }
 
-// 都市をインデックスで確定・保存する（UI/Webどちらからでも使える共通セッター）
-// プリセット都市を選ぶとカスタムモードは解除される。
+// プリセット都市をインデックスで確定・保存する（UI/Webどちらからでも使える共通セッター）
+// プリセット都市を選んでも、保存済みのカスタム座標は消さない（選択肢として残す）。
 void setCityByIndex(int idx) {
     if (idx < 0 || idx >= CITY_COUNT) return;
-    nextCityIndex = idx;
     currentCityIndex = idx;
-    locMode = 0;  // PRESETへ戻す
+    locMode = 0;  // PRESETへ戻す（customLat/Lonは保持）
     saveSettings();
+    nextSel = currentSelectionIndex();
 }
 
 // カスタム場所（緯度経度・地名・TZ）を保存する（Web /save から呼ぶ）
@@ -167,19 +183,20 @@ void showSettingsScreen() {
     int startY = 50;
     int itemHeight = 25;
     
-    for (int i = 0; i < CITY_COUNT; i++) {
+    // 結合リスト（先頭にカスタム地点があればそれ、その後にプリセット都市）を描画
+    for (int i = 0; i < selectionCount(); i++) {
         int itemY = startY + i * itemHeight;
-        
+
         // 選択中のアイテムをハイライト
-        if (i == nextCityIndex) {
+        if (i == nextSel) {
             canvas.fillRoundRect(40, itemY - 5, width - 80, itemHeight, 5, TFT_DARKGREY);
             canvas.setTextColor(TFT_YELLOW);
         } else {
-            canvas.setTextColor(TFT_WHITE);
+            canvas.setTextColor(selIsCustom(i) ? TFT_CYAN : TFT_WHITE);
         }
-        
-        // 都市名表示
-        canvas.drawString(CITIES[i].name, 50, itemY);
+
+        // 地名表示
+        canvas.drawString(selectionName(i), 50, itemY);
     }
     
     // 操作ガイド
@@ -194,13 +211,12 @@ void handleSettingsTouch(int x, int y) {
     int itemHeight = 25;
     int width = M5.Display.width();
     
-    // 都市リストのタッチ判定
+    // リストのタッチ判定
     if (x >= 40 && x <= width - 40) {
-        for (int i = 0; i < CITY_COUNT; i++) {
+        for (int i = 0; i < selectionCount(); i++) {
             int itemY = startY + i * itemHeight;
             if (y >= itemY - 5 && y <= itemY + itemHeight - 5) {
-                // 都市を選択
-                nextCityIndex = i;
+                nextSel = i;
                 showSettingsScreen();  // 画面を再描画
                 return;
             }
@@ -208,16 +224,21 @@ void handleSettingsTouch(int x, int y) {
     }
 }
 
-// 次の都市を選択（ボタンC押下時）
+// 次の項目を選択（ボタンC押下時）
 void selectNextCity() {
-    nextCityIndex = (nextCityIndex + 1) % CITY_COUNT;
+    nextSel = (nextSel + 1) % selectionCount();
     showSettingsScreen();  // 画面を再描画
     M5.Speaker.tone(BEEP_FREQ, BEEP_DURATION);  // 非ブロッキング。delayは入れない（フリーズ防止）
 }
 
+// 仮選択(nextSel)を確定・保存する（ボタンB押下時）
 void setCurrentCity() {
-    currentCityIndex = nextCityIndex;
-    locMode = 0;  // プリセット都市を確定 → カスタムモード解除
+    if (selIsCustom(nextSel)) {
+        locMode = 1;  // カスタム地点を選択（座標は保存済み）
+    } else {
+        currentCityIndex = nextSel - selectionOffset();
+        locMode = 0;  // プリセット都市（customLat/Lonは保持＝選択肢として残す）
+    }
     saveSettings();
     showSettingsScreen();  // 画面を再描画
     M5.Speaker.tone(BEEP_FREQ, BEEP_DURATION);
