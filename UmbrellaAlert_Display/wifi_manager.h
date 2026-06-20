@@ -36,8 +36,10 @@ extern void rebootDevice();
 
 // 保存された設定の復元
 boolean restoreConfig() {
+    preferences.begin("wifi-config", false);
     wifi_ssid = preferences.getString("WIFI_SSID", "");
-    wifi_password = preferences.getString("WIFI_PASSWD", "");    
+    wifi_password = preferences.getString("WIFI_PASSWD", "");
+    preferences.end();
     if (wifi_ssid.length() > 0) {
         WiFi.begin(wifi_ssid.c_str(), wifi_password.c_str());
         return true;

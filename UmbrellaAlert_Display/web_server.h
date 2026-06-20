@@ -139,8 +139,10 @@ void startWebServer() {
             Serial.printf("SSID: %s\n", ssid.c_str());
             Serial.printf("パスワード設定完了\n");
             
+            preferences.begin("wifi-config", false);
             preferences.putString("WIFI_SSID", ssid);
             preferences.putString("WIFI_PASSWD", pass);
+            preferences.end();
             
             String s = "<h1>✅ 設定完了</h1>";
             s += "<div class='success'>WiFi設定が保存されました。<br>デバイスが自動的に再起動され接続を開始します。</div>";

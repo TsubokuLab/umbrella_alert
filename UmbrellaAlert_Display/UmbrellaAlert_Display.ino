@@ -313,9 +313,8 @@ void setup() {
     Serial.println("M5.Ex_I2C.getSDA() : " + String(M5.Ex_I2C.getSDA()));
     Serial.println("M5.Ex_I2C.getSCL() : " + String(M5.Ex_I2C.getSCL()));
 
-    // 設定保存領域初期化
-    preferences.begin("wifi-config");
-    delay(10);
+    // 設定保存(Preferences)は各操作で begin/end を完結させる方針のため、
+    // ここでは開きっぱなしにしない（開いたままだと begin が名前空間を切替できずバグになる）
 
     // LCD表示
     M5.Display.println(String(APP_TITLE) + " - " + String(APP_VERSION));
