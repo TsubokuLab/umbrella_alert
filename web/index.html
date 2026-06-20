@@ -218,20 +218,10 @@
   $("sendBtn").addEventListener("click", () => {
     if (!deviceIp) { showStatus("err", "本体IPが未指定です"); return; }
     const url = buildSaveUrl();
-
-    // HTTPS(本ページ)→HTTP(本体) は Mixed Content でブロックされる場合があるため、
-    // no-cors fetch と 画像ビーコンの両方を試し、手動URLも提示する。
-    let settled = false;
-    const done = () => { if (settled) return; settled = true;
-      showStatus("ok", "送信しました。本体が再起動して反映します（数十秒）。");
-    };
-    try { fetch(url, { mode: "no-cors" }).then(done).catch(()=>{}); } catch(e){}
-    try { const img = new Image(); img.onload = done; img.src = url; } catch(e){}
-
-    manualEl.innerHTML = "うまく反映されない場合は、本体と同じWi-Fiに繋いだ状態で次のURLを開いてください:<br>"
-      + "<a href='" + url + "' target='_blank' rel='noopener'>" + url + "</a>";
-    showStatus("warn", "送信を試みています…（ブロックされる場合は下のURLを開いてください）");
-    setTimeout(done, 1500);
+    // HTTPSページからの fetch/no-cors は Mixed Content でブロックされるため使わない。
+    // リンククリックと同じ「トップレベル遷移」で本体の /save を開く（これは許可される）。
+    showStatus("ok", "本体へ送信します…（保存後に本体が再起動します）");
+    window.location.href = url;
   });
 
   function showStatus(type, msg){

@@ -206,9 +206,13 @@ void startWebServer() {
 
             setCustomLocation(lat, lon, name, tz);
 
-            // HTTPS(外部ページ)→HTTP(本体)のためCORSヘッダを付与（no-cors時は無視されるが害なし）
+            // 設定ページから「トップレベル遷移」で開かれるため、見やすい確認ページを返す
+            String disp = name.length() > 0 ? name : (lat + ", " + lon);
+            String s = "<h1>✅ 保存しました</h1>";
+            s += "<div class='success'>場所を保存しました: <strong>" + disp + "</strong><br>";
+            s += "本体が再起動して反映します（数十秒）。このページは閉じて構いません。</div>";
             webServer.sendHeader("Access-Control-Allow-Origin", "*");
-            webServer.send(200, "text/plain", "OK");
+            webServer.send(200, "text/html", makePage("保存完了", s));
             delay(500);
             ESP.restart();  // 反映のため再起動
         });
