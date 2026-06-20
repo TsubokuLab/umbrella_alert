@@ -26,10 +26,10 @@ bool drawPngFromLittleFS(const char* path, int16_t x, int16_t y);
 void drawVirtualButtons(String btnA, String btnB, String btnC) {
     int btm_width = (width + 1) / 3;
     String labels[3] = { btnA, btnB, btnC };
-    // ボタン背景（ラベルが空の位置は描画しない＝ボタンなし）
+    // ボタン背景（ラベルが空の位置は無効ボタンとして暗いグレーで描画）
     for (int i = 0; i < 3; i++) {
-        if (labels[i].length() == 0) continue;
-        canvas.fillRoundRect(btm_width * i, height - 40, btm_width - 1, 40, 10, BTN_BG_COLOR);
+        uint16_t col = labels[i].length() == 0 ? BTN_DISABLED_COLOR : BTN_BG_COLOR;
+        canvas.fillRoundRect(btm_width * i, height - 40, btm_width - 1, 40, 10, col);
     }
     // ボタンラベル
     canvas.setTextColor(BTN_TEXT_COLOR);
