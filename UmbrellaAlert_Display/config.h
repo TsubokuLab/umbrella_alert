@@ -146,13 +146,7 @@ enum ScreenMode {
 #define WARNING_COLOR M5.Display.color565(0,220,255)  // 警告色
 
 // ===== 画像設定 =====
-//constexpr auto SUN_PATH = "/sun-icon.png";
-//constexpr auto MOON_PATH = "/moon-icon.png";
-//constexpr auto UMBRELLA_PATH = "/umbrella-icon.png";
-//constexpr auto CLOUD_PATH = "/cloud-icon.png";
-//constexpr auto DAY_CLOUD_PATH = "/day-cloud-icon.png";
-//constexpr auto NIGHT_CLOUD_PATH = "/night-cloud-icon.png";
-// Designed by Anindyanfitri / Freepik - http://www.freepik.com
+// 天気アイコン Designed by Anindyanfitri / Freepik - http://www.freepik.com
 // OpenWeatherMapのアイコンパス : https://openweathermap.org/img/wn/10d.png
 constexpr auto WEATHER_ICON_PATH = "https://openweathermap.org/img/wn/";
 

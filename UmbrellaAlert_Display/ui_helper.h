@@ -8,6 +8,7 @@
 #include "weather.h"
 #include "config.h"
 #include <TimeLib.h>
+#include <time.h>      // NTP時刻（日時表示）用
 
 extern int width;
 extern int height;
@@ -66,6 +67,29 @@ void showMainScreen(bool willRain, float rainProbability, float temperature, flo
     }
     // PNG表示を試みる
     drawPngFromLittleFS(_iconPath, width/2 - 64 - 70, height/2 - 64 - 0);
+
+    // 日時表示（左下・アイコンに重ねる）。NTP同期済みのみ。
+    struct tm tnow;
+    if (getLocalTime(&tnow, 5)) {
+        static const char* const WDAYS[] = {"日", "月", "火", "水", "木", "金", "土"};
+        char dateBuf[24];
+        snprintf(dateBuf, sizeof(dateBuf), "%d/%d (%s)", tnow.tm_mon + 1, tnow.tm_mday, WDAYS[tnow.tm_wday]);
+        char timeBuf[8];
+        snprintf(timeBuf, sizeof(timeBuf), "%02d:%02d", tnow.tm_hour, tnow.tm_min);
+
+        uint16_t fg = willRain ? TFT_WHITE : NAVY_COLOR;
+        uint16_t sh = willRain ? TFT_BLACK : TFT_WHITE;  // 影でアイコン上でも視認性を確保
+        canvas.setTextDatum(BL_DATUM);
+        // 日付（M/D (曜)）
+        canvas.setFont(&fonts::lgfxJapanGothicP_20);
+        canvas.setTextColor(sh); canvas.drawString(dateBuf, 11, height - 91);
+        canvas.setTextColor(fg); canvas.drawString(dateBuf, 10, height - 92);
+        // 時刻（HH:MM・大きめ）
+        canvas.setFont(&fonts::lgfxJapanGothicP_40);
+        canvas.setTextColor(sh); canvas.drawString(timeBuf, 11, height - 47);
+        canvas.setTextColor(fg); canvas.drawString(timeBuf, 10, height - 48);
+    }
+
     canvas.setFont(&fonts::lgfxJapanGothicP_20);
 
     // 都市名表示（追加部分）

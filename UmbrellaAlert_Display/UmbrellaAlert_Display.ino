@@ -11,6 +11,7 @@
 #include <ArduinoJson.h>
 #include <Adafruit_NeoPixel.h>
 #include <Preferences.h>
+#include <time.h>          // NTP時刻（日時表示）用
 
 #include "config.h"
 #include "styles.h"
@@ -346,6 +347,8 @@ void setup() {
             connectionStatus = "WiFi接続成功";
             M5.Display.println("接続成功 - 稼働モード");
             startWebServer();
+            // NTPで時刻同期（タイムゾーンは選択中の場所に合わせる）
+            configTime(getCurrentTimezoneOffset(), 0, "ntp.nict.jp", "time.google.com", "pool.ntp.org");
             showLoadingScreen();
 
             // 初回の天気チェック
@@ -427,7 +430,7 @@ void loop() {
     //  ・設定モード → 稼働秒数と接続状態の点滅
     // 静止画面は画面遷移時に1回描画済みなので再描画しない。
     bool needsPeriodicRedraw =
-        (deviceMode == APP_MODE && currentScreen == MAIN_PAGE && willRain) ||
+        (deviceMode == APP_MODE && currentScreen == MAIN_PAGE) ||   // 時計表示のため常時更新
         (deviceMode == SETTING_MODE);
     if(needsPeriodicRedraw && currentTime - lastDrawTime >= DRAW_INTERVAL){
         lastDrawTime = currentTime;
