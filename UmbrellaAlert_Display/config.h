@@ -4,7 +4,7 @@
 #define CONFIG_H
 
 // ===== 基本設定 =====
-#define APP_TITLE "傘通知アプリ"                    // アプリケーションタイトル
+#define APP_TITLE "Umbrella Alert"                    // アプリケーションタイトル
 #define APP_VERSION "v0.0.1"                           // アプリケーションバージョン
 #define AP_SSID "Umbrella-Alert"                         // アクセスポイント名
 #define AP_PASS "12345678"                             // アクセスポイントパスワード

@@ -166,9 +166,9 @@ void showSettingsScreen() {
     int width = M5.Display.width();
     int height = M5.Display.height();
     
-    canvas.fillScreen(TFT_NAVY);
+    canvas.fillScreen(RAINY_COLOR);
     canvas.setTextColor(TFT_WHITE);
-    
+
     // ヘッダー
     canvas.setTextSize(1.0 * FONT_SCALE);
     canvas.setTextDatum(TC_DATUM);
@@ -207,9 +207,9 @@ void showSettingsScreen() {
         }
     }
     
-    // 操作ガイド
+    // 操作ガイド（左下=戻る / 右下=↓で循環。選択は戻る時に変更があれば自動確定）
     canvas.setTextColor(TFT_WHITE);
-    drawVirtualButtons("戻る", "選択", "↓");
+    drawVirtualButtons("戻る", "", "↓");
     canvas.pushSprite(&M5.Display, 0, 0);
 }
 

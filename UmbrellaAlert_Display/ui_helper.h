@@ -25,18 +25,21 @@ bool drawPngFromLittleFS(const char* path, int16_t x, int16_t y);
 // 仮想ボタンの描画（画面下部のタッチボタン）
 void drawVirtualButtons(String btnA, String btnB, String btnC) {
     int btm_width = (width + 1) / 3;
-    // ボタン背景
-    canvas.fillRoundRect(btm_width * 0, height - 40, btm_width - 1, 40, 10, BTN_BG_COLOR);
-    canvas.fillRoundRect(btm_width * 1, height - 40, btm_width - 1, 40, 10, BTN_BG_COLOR);
-    canvas.fillRoundRect(btm_width * 2, height - 40, btm_width - 1, 40, 10, BTN_BG_COLOR);
+    String labels[3] = { btnA, btnB, btnC };
+    // ボタン背景（ラベルが空の位置は描画しない＝ボタンなし）
+    for (int i = 0; i < 3; i++) {
+        if (labels[i].length() == 0) continue;
+        canvas.fillRoundRect(btm_width * i, height - 40, btm_width - 1, 40, 10, BTN_BG_COLOR);
+    }
     // ボタンラベル
     canvas.setTextColor(BTN_TEXT_COLOR);
     canvas.setFont(&fonts::lgfxJapanGothicP_20);
     canvas.setTextSize(1.0 * FONT_SCALE);
     canvas.setTextDatum(MC_DATUM);
-    canvas.drawString(btnA, width / 6 * 1, height - 20);
-    canvas.drawString(btnB, width / 6 * 3, height - 20);
-    canvas.drawString(btnC, width / 6 * 5, height - 20);
+    for (int i = 0; i < 3; i++) {
+        if (labels[i].length() == 0) continue;
+        canvas.drawString(labels[i], width / 6 * (i * 2 + 1), height - 20);
+    }
     canvas.setFont(&fonts::lgfxJapanGothicP_16);
 }
 
@@ -118,9 +121,9 @@ void showDetailScreen(float temperature, float humidity, float windSpeed, String
     int width = M5.Display.width(); //320
     int height = M5.Display.height(); //240
 
-    canvas.fillScreen(TFT_NAVY);
+    canvas.fillScreen(RAINY_COLOR);
     canvas.setTextColor(TFT_WHITE);
-    
+
     // ヘッダー
     canvas.setTextDatum(TC_DATUM);
     canvas.setTextSize(1.0 * FONT_SCALE);
@@ -141,9 +144,9 @@ void showDetailScreen(float temperature, float humidity, float windSpeed, String
     
     canvas.setCursor(20, 140);
     canvas.printf("風速: %.1fm/s", windSpeed);
-    
-    // 操作ガイド
-    drawVirtualButtons("設定", "詳細", "都市");
+
+    // 操作ガイド（左下の戻るのみ）
+    drawVirtualButtons("戻る", "", "");
 
     canvas.pushSprite(&M5.Display, 0, 0);
 }
@@ -207,8 +210,8 @@ void showForecastScreen(DynamicJsonDocument& doc, bool willRain, long tzOffsetSe
         canvas.drawString("" + String(int(pop)) + "%", width - 10, itemY);
     }
     
-    // 操作ガイド
-    drawVirtualButtons("設定", "詳細", "都市");
+    // 操作ガイド（左下の戻るのみ）
+    drawVirtualButtons("戻る", "", "");
 
     canvas.pushSprite(&M5.Display, 0, 0);
 }

@@ -496,7 +496,18 @@ void changeScreenMode(ScreenMode _mode, bool _isBeep){
     }
 }
 
-// ボタンA押下処理（左ボタン）
+// 都市設定画面から戻る: 仮選択が現在の設定と異なれば確定＋再読み込み（旧「選択」と同挙動）
+void applyCityAndReturn(){
+    if (nextSel != currentSelectionIndex()) {
+        setCurrentCity();      // 変更を確定・保存
+        showLoadingScreen();
+        reloadWeatherApi();    // 新しい場所で再取得 → 完了後メイン画面へ
+    } else {
+        changeScreenMode(MAIN_PAGE);  // 変更なし → そのまま戻る
+    }
+}
+
+// ボタンA押下処理（左ボタン）= 基本「メイン画面に戻る」。メイン画面では「設定」。
 void A_Pressed(){
     Serial.println("A Button Pressed.");
 
@@ -504,65 +515,46 @@ void A_Pressed(){
         case APP_MODE:
             switch(currentScreen){
                 case MAIN_PAGE:
+                    changeDeviceMode(SETTING_MODE);   // 設定（デバイス設定画面へ）
+                    break;
                 case FORECAST_PAGE:
-                    // 設定画面へ
-                    changeDeviceMode(SETTING_MODE);
+                case DETAIL_PAGE:
+                    changeScreenMode(MAIN_PAGE);       // 戻る
                     break;
                 case SETTINGS_PAGE:
-                    changeScreenMode(MAIN_PAGE);
-                    break;
-                case DETAIL_PAGE:
-                    currentScreen = MAIN_PAGE;
-                    changeDeviceMode(SETTING_MODE);
+                    applyCityAndReturn();              // 戻る（変更あれば確定＋再読込）
                     break;
                 default:
                     break;
             }
             break;
         case SETTING_MODE:
-            // アプリメイン画面へ
-            changeDeviceMode(APP_MODE);
+            changeDeviceMode(APP_MODE);                // 戻る（メイン画面へ）
             break;
         default:
             break;
     }
 }
 
-// ボタンB押下処理（中央ボタン）
+// ボタンB押下処理（中央ボタン）= メイン画面のみ「詳細」。他画面では無し。
 void B_Pressed(){
     Serial.println("B Button Pressed.");
 
     switch(deviceMode){
         case APP_MODE:
-            switch(currentScreen){
-                case MAIN_PAGE:
-                case FORECAST_PAGE:
-                    // 詳細画面表示
-                    changeScreenMode(DETAIL_PAGE);
-                    break;
-                case SETTINGS_PAGE:
-                    // 都市を決定
-                    setCurrentCity();
-                    showLoadingScreen();
-                    reloadWeatherApi();
-                    break;
-                case DETAIL_PAGE:
-                    changeScreenMode(MAIN_PAGE);
-                    break;
-                default:
-                    break;
+            if (currentScreen == MAIN_PAGE) {
+                changeScreenMode(DETAIL_PAGE);         // 詳細
             }
             break;
         case SETTING_MODE:
-            // 再起動
-            rebootDevice();
+            rebootDevice();                            // 再起動
             break;
         default:
             break;
     }
 }
 
-// ボタンC押下処理（右ボタン）
+// ボタンC押下処理（右ボタン）= メイン画面「都市」、都市画面「↓循環」。他は無し。
 void C_Pressed(){
     Serial.println("C Button Pressed.");
 
@@ -570,12 +562,10 @@ void C_Pressed(){
         case APP_MODE:
             switch(currentScreen){
                 case MAIN_PAGE:
-                case FORECAST_PAGE:
-                case DETAIL_PAGE:
-                    changeScreenMode(SETTINGS_PAGE);
+                    changeScreenMode(SETTINGS_PAGE);   // 都市設定へ
                     break;
                 case SETTINGS_PAGE:
-                    selectNextCity();
+                    selectNextCity();                  // ↓ 次の候補へ循環
                     break;
                 default:
                     break;
