@@ -241,7 +241,7 @@ int drawWrappedText(const String& text, int x, int y, int maxRight, int lineH){
 // 設定画面の音量ボタンの矩形（QRコードの上に配置・コンパクト）
 void volumeButtonRect(int& x, int& y, int& w, int& h){
     const int spacing = 10, qr_size = 80;
-    w = 66; h = 26;  // 横幅半分・縦0.8倍
+    w = 84; h = 28;  // 横幅を約半分に、縦も控えめに（ラベルは16ptで収まるサイズ）
     x = width - w - spacing;
     y = (height - 40 - qr_size - spacing) - h - spacing;
 }
@@ -250,12 +250,11 @@ void volumeButtonRect(int& x, int& y, int& w, int& h){
 void drawVolumeButton(){
     int x, y, w, h; volumeButtonRect(x, y, w, h);
     canvas.fillRoundRect(x, y, w, h, 6, BTN_BG_COLOR);
-    canvas.setFont(&fonts::lgfxJapanGothicP_12);
+    canvas.setFont(&fonts::lgfxJapanGothicP_16);
     canvas.setTextSize(1.0 * FONT_SCALE);
     canvas.setTextDatum(MC_DATUM);
     canvas.setTextColor(BTN_TEXT_COLOR);
     canvas.drawString("音量:" + String(currentBeepLabel()), x + w / 2, y + h / 2);
-    canvas.setFont(&fonts::lgfxJapanGothicP_16);
 }
 
 // 接続状態表示の更新（右上の点滅アイコン）

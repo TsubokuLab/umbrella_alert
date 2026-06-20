@@ -210,7 +210,8 @@
     const q = new URLSearchParams({
       lat: fmt(lat), lon: fmt(lon),
       name: nameInput.value || "",
-      tz: String(tzOffsetSec)
+      tz: String(tzOffsetSec),
+      _: String(Date.now())   // キャッシュ回避（毎回ユニークなURLにする）
     });
     return "http://" + deviceIp + "/save?" + q.toString();
   }

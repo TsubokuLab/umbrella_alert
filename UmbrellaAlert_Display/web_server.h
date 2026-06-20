@@ -214,6 +214,7 @@ void startWebServer() {
             // 設定ページから別タブ(window.open)で開かれた場合、表示後に自動で閉じる
             s += "<script>setTimeout(function(){window.close();},1500);</script>";
             webServer.sendHeader("Access-Control-Allow-Origin", "*");
+            webServer.sendHeader("Cache-Control", "no-store");  // ブラウザにキャッシュさせない
             webServer.send(200, "text/html", makePage("保存完了", s));
             delay(500);
             ESP.restart();  // 反映のため再起動
