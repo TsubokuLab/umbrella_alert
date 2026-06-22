@@ -79,13 +79,13 @@ void showMainScreen(bool willRain, float rainProbability, float temperature, flo
         snprintf(mm, sizeof(mm), "%02d", tnow.tm_min);
 
         uint16_t fg = willRain ? TFT_WHITE : NAVY_COLOR;
-        uint16_t sh = willRain ? TFT_BLACK : TFT_WHITE;  // 影でアイコン上でも視認性を確保
+        uint16_t sh = willRain ? CLOCK_SHADOW_RAINY : CLOCK_SHADOW_SUNNY;  // 影でアイコン上でも視認性を確保
         const int shx = 3, shy = 3;  // 影オフセット
         canvas.setTextDatum(BL_DATUM);
 
         // 日付（M/D (曜)）
         canvas.setFont(&fonts::lgfxJapanGothicP_20);
-        canvas.setTextColor(sh); canvas.drawString(dateBuf, 10 + shx, height - 86 + shy);
+        canvas.setTextColor(sh); canvas.drawString(dateBuf, 10 + 1, height - 86 + 1);
         canvas.setTextColor(fg); canvas.drawString(dateBuf, 10, height - 86);
 
         // 時刻（HH:MM・大きめ）。コロンは0.5秒ごとに点滅。

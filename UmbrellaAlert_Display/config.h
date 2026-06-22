@@ -49,8 +49,10 @@ enum ScreenMode {
 #define FONT_SCALE 1.0                                        // フォントサイズ調整用
 #define LCD_TEXT_COLOR M5.Display.color565(0, 0, 0)           // LCD文字色（黒）
 #define LCD_BG_COLOR M5.Display.color565(255, 255, 255)       // LCD背景色（白）
-#define BTN_BG_COLOR M5.Display.color565(70, 93, 106)         // ボタン背景色（ネイビー）
-#define BTN_DISABLED_COLOR M5.Display.color565(74, 82, 87)    // 無効ボタン背景色（暗いグレー）
+//#define BTN_BG_COLOR M5.Display.color565(70, 93, 106)         // ボタン背景色（ネイビー）
+//#define BTN_DISABLED_COLOR M5.Display.color565(38, 50, 50)    // 無効ボタン背景色（暗いネイビー）
+#define BTN_BG_COLOR M5.Display.color565(90, 90, 90)         // ボタン背景色（グレー）
+#define BTN_DISABLED_COLOR M5.Display.color565(50, 50, 50)    // 無効ボタン背景色（暗いグレー）
 #define BTN_TEXT_COLOR M5.Display.color565(255, 255, 255)     // ボタンテキスト色（白）
 #define SETUP_COLOR M5.Display.color565(195, 87, 87)  	      // セットアップ画面ヘッダー色（赤）
 #define APP_COLOR M5.Display.color565(52, 200, 190)  	        // アプリ画面ヘッダー色（緑）
@@ -144,6 +146,10 @@ enum ScreenMode {
 #define DARK_COLOR M5.Display.color565(55, 71, 79)  // ダークグレー
 #define NAVY_COLOR M5.Display.color565(0, 51, 102)  // ネイビー
 #define WARNING_COLOR M5.Display.color565(0,220,255)  // 警告色
+
+// メイン画面の時計の影色（アイコン上での視認性確保用）
+#define CLOCK_SHADOW_SUNNY M5.Display.color565(210, 210, 210)  // 晴れ時（薄いグレー）
+#define CLOCK_SHADOW_RAINY M5.Display.color565(0, 0, 0)        // 雨時（黒）
 
 // ===== 画像設定 =====
 // 天気アイコン Designed by Anindyanfitri / Freepik - http://www.freepik.com
