@@ -148,8 +148,8 @@ enum ScreenMode {
 #define WARNING_COLOR M5.Display.color565(0,220,255)  // 警告色
 
 // メイン画面の時計の影色（アイコン上での視認性確保用）
-#define CLOCK_SHADOW_SUNNY M5.Display.color565(210, 210, 210)  // 晴れ時（薄いグレー）
-#define CLOCK_SHADOW_RAINY M5.Display.color565(0, 0, 0)        // 雨時（黒）
+#define CLOCK_SHADOW_SUNNY M5.Display.color565(160, 160, 160)  // 晴れ時（薄いグレー）
+#define CLOCK_SHADOW_RAINY M5.Display.color565(40, 40, 40)        // 雨時（黒）
 
 // ===== 画像設定 =====
 // 天気アイコン Designed by Anindyanfitri / Freepik - http://www.freepik.com

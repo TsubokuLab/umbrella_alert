@@ -80,7 +80,7 @@ void showMainScreen(bool willRain, float rainProbability, float temperature, flo
 
         uint16_t fg = willRain ? TFT_WHITE : NAVY_COLOR;
         uint16_t sh = willRain ? CLOCK_SHADOW_RAINY : CLOCK_SHADOW_SUNNY;  // 影でアイコン上でも視認性を確保
-        const int shx = 3, shy = 3;  // 影オフセット
+        const int shx = 2, shy = 2;  // 影オフセット
         canvas.setTextDatum(BL_DATUM);
 
         // 日付（M/D (曜)）
