@@ -18,7 +18,8 @@
 #include "web_server.h"
 
 // ===== NeoPixel LED =====
-Adafruit_NeoPixel pixels = Adafruit_NeoPixel(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel pixels  = Adafruit_NeoPixel(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);          // 外付けリング
+Adafruit_NeoPixel onboard = Adafruit_NeoPixel(1, ONBOARD_LED_PIN, NEO_GRB + NEO_KHZ800);          // 本体内蔵RGB（インジケーター）
 int rotation = 0;
 
 // ===== 状態 =====
@@ -28,9 +29,10 @@ float rainProbability = 0;
 DynamicJsonDocument doc(16384);
 unsigned long lastUpdateTime = 0;
 
-// LED表示の状態（接続中 / 設定モード / 通常）
-enum LedState { LED_CONNECTING, LED_SETUP, LED_APP };
+// LED表示の状態
+enum LedState { LED_CONNECTING, LED_SETUP, LED_APP, LED_RESET_ARMING, LED_RESETTING };
 volatile int ledState = LED_CONNECTING;
+volatile unsigned long resetHeldMs = 0;  // ボタン長押しの経過時間（リセット進捗表示用）
 
 // ===== Web/WiFi 用グローバル（各ヘッダから extern 参照）=====
 String ssidList;
@@ -70,6 +72,14 @@ void setup() {
     pixels.clear();
     pixels.show();
 
+    // 本体内蔵RGB LED（インジケーター）初期化。電源イネーブルをHIGHに
+    pinMode(ONBOARD_LED_POWER_PIN, OUTPUT);
+    digitalWrite(ONBOARD_LED_POWER_PIN, HIGH);
+    onboard.begin();
+    onboard.setBrightness(ONBOARD_LED_BRIGHTNESS);
+    onboard.clear();
+    onboard.show();
+
     // LED更新を別コアの専用タスクで回す（描画/通信にブロックされない）
     ledState = LED_CONNECTING;
     xTaskCreatePinnedToCore(ledTask, "ledTask", 4096, NULL, 1, NULL, 0);
@@ -96,9 +106,24 @@ void loop() {
     webServer.handleClient();
 
     M5.update();
-    // ボタン長押しでWiFi設定をリセット（設定モードに戻る）
-    if (M5.BtnA.pressedFor(RESET_HOLD_MS)) {
-        resetSettings();
+    // ボタン長押しでWiFi設定をリセット。押している間はインジケーターで進捗を表示。
+    static unsigned long btnDown = 0;
+    static int prevLedState = LED_CONNECTING;
+    if (M5.BtnA.wasPressed()) { btnDown = millis(); prevLedState = ledState; }
+    if (M5.BtnA.isPressed() && btnDown) {
+        resetHeldMs = millis() - btnDown;
+        if (resetHeldMs >= RESET_HOLD_MS) {
+            ledState = LED_RESETTING;   // 確定: 赤の点滅でフィードバック
+            delay(900);                 // フィードバックを見せる時間
+            resetSettings();            // WiFi設定をクリアして再起動
+        } else {
+            ledState = LED_RESET_ARMING; // 押下中: 赤の進捗表示
+        }
+    }
+    if (M5.BtnA.wasReleased()) {
+        if (ledState == LED_RESET_ARMING) ledState = prevLedState;  // 途中で離した → 元の状態へ
+        btnDown = 0;
+        resetHeldMs = 0;
     }
 
     // 定期的に天気を更新（通常モードのみ）
@@ -113,16 +138,61 @@ void loop() {
     delay(5);
 }
 
-// ===== LED表示 =====
+// 内蔵RGB LED（インジケーター）を状態に応じて点灯
+void updateOnboard() {
+    uint8_t r = 0, g = 0, b = 0;
+    switch (ledState) {
+        case LED_SETUP: {  // シアン呼吸
+            float a = 0.3 + 0.7 * (0.5 + 0.5 * sin(millis() * 0.002));
+            g = 200 * a; b = 200 * a;
+        } break;
+        case LED_CONNECTING: {  // 黄色点滅
+            if ((millis() / 250) % 2 == 0) { r = 255; g = 140; }
+        } break;
+        case LED_RESET_ARMING: {  // 赤点滅。進捗が進むほど速く
+            float prog = (float)resetHeldMs / RESET_HOLD_MS;
+            if (prog > 1.0) prog = 1.0;
+            int period = 400 - (int)(prog * 320);
+            if (period < 60) period = 60;
+            if ((millis() / period) % 2 == 0) r = 255;
+        } break;
+        case LED_RESETTING: {  // 赤の速い点滅
+            if ((millis() / 100) % 2 == 0) r = 255;
+        } break;
+        default: {  // LED_APP
+            if (willRain) {  // 雨: 青点滅
+                if ((millis() / 500) % 2 == 0) b = 255;
+            } else {         // 晴れ: オレンジ呼吸
+                float a = 0.5 + 0.5 * (0.5 + 0.5 * sin(millis() * 0.0015));
+                r = 255 * a; g = 120 * a;
+            }
+        } break;
+    }
+    onboard.setPixelColor(0, r, g, b);
+    onboard.show();
+}
+
+// ===== LED表示（外付けリング ＋ 内蔵インジケーター）=====
 void updateLEDs() {
     const int brightness = 100;
 
-    if (ledState == LED_SETUP) {
+    if (ledState == LED_RESET_ARMING) {
+        // リセット長押し中: 赤の進捗バー（点灯数が増える）
+        float prog = (float)resetHeldMs / RESET_HOLD_MS;
+        if (prog > 1.0) prog = 1.0;
+        int lit = (int)ceil(prog * LED_COUNT);
+        for (int i = 0; i < LED_COUNT; i++) pixels.setPixelColor(i, (i < lit) ? 160 : 6, 0, 0);
+
+    } else if (ledState == LED_RESETTING) {
+        // リセット確定: 赤の速い点滅
+        bool on = (millis() / 100) % 2 == 0;
+        for (int i = 0; i < LED_COUNT; i++) pixels.setPixelColor(i, on ? 200 : 0, 0, 0);
+
+    } else if (ledState == LED_SETUP) {
         // 設定モード: シアンのゆっくり呼吸
         float amp = 0.25 + 0.75 * (0.5 + 0.5 * sin(millis() * 0.002));
-        for (int i = 0; i < LED_COUNT; i++) {
-            pixels.setPixelColor(i, 0, brightness * amp, brightness * amp);
-        }
+        for (int i = 0; i < LED_COUNT; i++) pixels.setPixelColor(i, 0, brightness * amp, brightness * amp);
+
     } else if (ledState == LED_CONNECTING) {
         // 接続中: 黄色のコメットが回る
         int pos = (millis() / 60) % LED_COUNT;
@@ -132,8 +202,8 @@ void updateLEDs() {
             float f = 1.0 - t * 0.2;
             pixels.setPixelColor(p, brightness * f, brightness * 0.6 * f, 0);
         }
-    } else {
-        // 通常モード
+
+    } else {  // LED_APP
         if (willRain) {
             // 雨: 青の回転（時間ベース）
             float _fade = 1.0 + float(sin(millis() * 0.001 * 3.14) * 0.5);
@@ -146,12 +216,13 @@ void updateLEDs() {
         } else {
             // 晴れ: オレンジのゆっくり明滅
             float _amp = 1.0 + float(sin(millis() * 0.001 * 0.5 * 3.14) * 0.4);
-            for (int i = 0; i < LED_COUNT; i++) {
-                pixels.setPixelColor(i, brightness * _amp, brightness / 3 * _amp, 0);
-            }
+            for (int i = 0; i < LED_COUNT; i++) pixels.setPixelColor(i, brightness * _amp, brightness / 3 * _amp, 0);
         }
     }
     pixels.show();
+
+    // 本体内蔵LED（インジケーター）も同じ状態を表示
+    updateOnboard();
 }
 
 // LED更新タスク（別コア）

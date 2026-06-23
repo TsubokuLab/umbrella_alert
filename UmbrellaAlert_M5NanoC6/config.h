@@ -64,6 +64,13 @@ enum DeviceMode {
 #define LED_UPDATE_INTERVAL 10   // LED更新の間隔(ms)。10ms=100fps
 #define LED_ROTATION_PERIOD 1500 // 雨アニメが1周する時間(ms)。fpsとは独立
 
+// ===== 本体内蔵RGB LED（インジケーター。リング未接続でも状態が分かる）=====
+// M5 NanoC6 の内蔵RGB LED: データ=GPIO20 / 電源イネーブル=GPIO19(HIGHで点灯可)
+// ※点灯しない場合はピン番号を確認して調整
+#define ONBOARD_LED_PIN 20
+#define ONBOARD_LED_POWER_PIN 19
+#define ONBOARD_LED_BRIGHTNESS 60   // インジケーターは控えめに (0-255)
+
 // ===== 設定リセット =====
 #define RESET_HOLD_MS 3000       // ボタン長押しでWiFi設定リセット（ミリ秒）
 
