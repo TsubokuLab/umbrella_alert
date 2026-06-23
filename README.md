@@ -24,6 +24,11 @@
 
 > 補助ツール: [`tools/UmbrellaAlert_ImageWriter/`](tools/UmbrellaAlert_ImageWriter/) — 画像書き込みのテスト用スケッチ。
 
+### NanoC6版（画面なし）の初期設定
+画面が無いので、WiFi・場所はすべて**本体のアクセスポイントにスマホで接続してブラウザから**設定します（LCD版と同じAP方式）。状態は**LEDで表示**：設定モード=シアン呼吸／接続中=黄コメット／通常=雨青回転・晴橙明滅。本体ボタン長押しでWiFiリセット。
+- 接続情報は固定値なので**シール印刷**で案内可能：WiFi `Umbrella-Alert` / `12345678`、設定 `http://192.168.4.1`、再設定 `http://umbrella.local`
+- 詳細は [docs/SETUP.md](docs/SETUP.md) §4-4-2 / [docs/SPEC.md](docs/SPEC.md) §12
+
 ## 場所設定ページ（スマホ・GitHub Pages）
 
 緯度経度のカスタム指定は、スマホのブラウザから行います。フロントエンドは GitHub Pages で公開しています。

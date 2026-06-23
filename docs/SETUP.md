@@ -138,20 +138,38 @@ UmbrellaAlert_Display/
 ### 4-2. LEDのみ版（NanoC6）
 1. `UmbrellaAlert_M5NanoC6/UmbrellaAlert_M5NanoC6.ino` を開く
 2. ボード=M5NanoC6 を選び、**スケッチを書き込むだけ**（LittleFSアップロードは不要）
+3. WiFi・場所の登録は**画面が無いので本体APに接続してブラウザから**行う（§4-4-2）
 
 ### 4-3. APIキーの設定（secrets.h）※ビルド前に必須
-APIキー（とNanoC6版のWiFi資格情報）は**リポジトリに含めない**ため、各スケッチフォルダの
+APIキーは**リポジトリに含めない**ため、各スケッチフォルダの
 `secrets.h.example` を **`secrets.h`** にコピーして自分の値を設定する。`secrets.h` は
 `.gitignore` 済みでコミットされない。
 - `UmbrellaAlert_Display/secrets.h` … `API_KEY`
-- `UmbrellaAlert_M5NanoC6/secrets.h` … `WIFI_SSID` / `WIFI_PASSWORD` / `API_KEY`
+- `UmbrellaAlert_M5NanoC6/secrets.h` … `API_KEY`（**WiFiはコードに書かず、設定モードで登録**）
 
 > APIキーが未設定だとビルドは通っても天気取得に失敗する。キーは https://openweathermap.org/ で取得。
 
-### 4-4. WiFi / 場所の初回設定（LCD版）
-- 起動後、デバイスがAPモード（SSID: `Umbrella-Alert` / PASS: `12345678`）になる
-- スマホ等で接続し、表示されるQR/URL（`http://192.168.4.1`）から設定画面を開いてWiFiを登録
+### 4-4. WiFi / 場所の初回設定（共通：AP設定モード）
+LCD版・NanoC6版とも、**本体が飛ばすアクセスポイントにスマホで接続 → ブラウザで設定**する流れ。
+
+#### 4-4-1. LCD版（Core2 / CoreS3）
+- 起動後、APモード（SSID: `Umbrella-Alert` / PASS: `12345678`）。本体LCDにQR/URL（`http://192.168.4.1`）が出る
+- スマホで接続し設定画面からWiFiを登録 → 再起動して接続
 - 都市は本体の設定画面（プリセット）から選択。カスタム緯度経度は外部設定ページ（[SPEC.md](SPEC.md) 参照）
+
+#### 4-4-2. NanoC6版（画面なし）
+画面が無いので、接続情報は**本体に貼るシール**で案内する（AP IPは固定なので事前印刷可）。LEDで状態が分かる。
+1. 未設定で起動 → **設定モード（AP）**。LED=**シアンのゆっくり呼吸**
+   - SSID: `Umbrella-Alert` / PASS: `12345678`
+2. スマホでAPに接続 → `http://192.168.4.1`（または `http://umbrella.local`）の設定ページで
+   **WiFi＋地域（都市）を選んで保存** → 自動再起動
+3. 接続中はLED=**黄色のコメットが回転**。接続成功で通常動作（雨=青回転／晴=オレンジ明滅）
+4. **カスタム緯度経度**にしたい場合：接続後に同じWiFiから状態ページ（`http://umbrella.local`）を開き
+   「🗺 地図でカスタム地点を設定」→ GitHub Pages地図ページで指定（[SPEC.md](SPEC.md) §4-2 参照）
+5. **WiFiをやり直す**：本体ボタンを**3秒長押し**で設定をリセット → 設定モードに戻る
+
+> シールに載せると便利な情報：WiFi接続QR `WIFI:T:WPA;S:Umbrella-Alert;P:12345678;;` /
+> 設定ページ `http://192.168.4.1` / 再設定用 `http://umbrella.local`
 
 ---
 
