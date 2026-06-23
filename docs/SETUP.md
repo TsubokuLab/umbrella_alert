@@ -137,8 +137,12 @@ UmbrellaAlert_Display/
 
 ### 4-2. LEDのみ版（NanoC6）
 1. `UmbrellaAlert_M5NanoC6/UmbrellaAlert_M5NanoC6.ino` を開く
-2. ボード=M5NanoC6 を選び、**スケッチを書き込むだけ**（LittleFSアップロードは不要）
-3. WiFi・場所の登録は**画面が無いので本体APに接続してブラウザから**行う（§4-4-2）
+2. ボード=M5NanoC6 を選ぶ
+3. ⚠️ **Partition Scheme を APP領域が大きいものに変更**（既定だと `text section exceeds available space` でビルド不可）
+   - `ツール → Partition Scheme → Huge APP (3MB No OTA/1MB SPIFFS)`（推奨）または `Minimal SPIFFS (1.9MB APP...)`
+   - NanoC6はLittleFS（画像）を使わないので、`spiffs`系である必要はなく「APP ≥ 約1.4MB」ならOK。**LittleFSアップロードは不要**
+4. スケッチを書き込む
+5. WiFi・場所の登録は**画面が無いので本体APに接続してブラウザから**行う（§4-4-2）
 
 ### 4-3. APIキーの設定（secrets.h）※ビルド前に必須
 APIキーは**リポジトリに含めない**ため、各スケッチフォルダの
