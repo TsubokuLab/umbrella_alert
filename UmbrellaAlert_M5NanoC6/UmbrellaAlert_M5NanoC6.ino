@@ -1,334 +1,232 @@
-// umbrella_alert.ino - お出かけ傘アラート
-// 12時間以内の雨予報をチェックして、傘が必要かどうかを表示
+// UmbrellaAlert_M5NanoC6.ino - お出かけ傘アラート（M5 NanoC6 / 画面なし・LEDのみ版）
+// 12時間以内の雨予報をチェックし、リングLEDで「傘が必要か」を知らせる。
+// 初期設定は本体のアクセスポイントにスマホで接続し、ブラウザから行う。
 
-#include <M5Unified.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include <Adafruit_NeoPixel.h>
+#include <ESPmDNS.h>
+#include <DNSServer.h>
+#include <WebServer.h>
+#include <M5Unified.h>
 
 #include "config.h"
-#include "settings.h"
-#include "weather.h"
+#include "styles.h"
+#include "settings.h"      // preferences・場所設定を定義
+#include "wifi_manager.h"
+#include "web_server.h"
 
-// NeoPixel LEDの設定
-Adafruit_NeoPixel pixels = Adafruit_NeoPixel(24, M5.Ex_I2C.getSDA(), NEO_GRB + NEO_KHZ800);
+// ===== NeoPixel LED =====
+Adafruit_NeoPixel pixels = Adafruit_NeoPixel(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
 int rotation = 0;
 
-// タイマー設定
+// ===== 状態 =====
+DeviceMode deviceMode = SETUP_MODE;
+bool  willRain = false;
+float rainProbability = 0;
+DynamicJsonDocument doc(16384);
 unsigned long lastUpdateTime = 0;
 
-// 状態変数
-bool willRain = false;
-float rainProbability = 0;
-float temperature = 0;
-float temperature_min = 0;
-float temperature_max = 0;
-float humidity = 0;
-float windSpeed = 0;
-String weatherDescription = "";
-String weatherIcon = "";
-String cityName = "";
+// LED表示の状態（接続中 / 設定モード / 通常）
+enum LedState { LED_CONNECTING, LED_SETUP, LED_APP };
+volatile int ledState = LED_CONNECTING;
 
-// jsonファイル
-DynamicJsonDocument doc(16384);
+// ===== Web/WiFi 用グローバル（各ヘッダから extern 参照）=====
+String ssidList;
+String wifi_ssid;
+String wifi_password;
+int networkCount = 0;
+unsigned long lastWiFiCheck = 0;
+DNSServer dnsServer;
+WebServer webServer(WEB_SERVER_PORT);
 
-// LEDアニメーション用の変数
-TaskHandle_t ledTaskHandle = NULL;
-SemaphoreHandle_t ledSemaphore = NULL;
-volatile bool ledAnimationRunning = false;
-volatile bool ledWeatherState = false; // false: 晴れ, true: 雨
-
-// 画面モード
-enum ScreenMode {
-    MAIN_SCREEN,
-    DETAIL_SCREEN,
-    SETTINGS_SCREEN,
-    FORECAST_SCREEN
-};
-
-ScreenMode currentScreen = MAIN_SCREEN;
-    int width = M5.Display.width(); //320
-    int height = M5.Display.height(); //240
-
-// ===== 関数プロトタイプ =====
-void connectWiFi();
+// ===== プロトタイプ =====
 bool checkWeatherForecast();
-void updateLEDs();
 void reloadWeatherApi();
+void updateLEDs();
+void ledTask(void* param);
+void rebootDevice();
 
 // ===== セットアップ =====
 void setup() {
+    Serial.begin(SERIAL_BAUD_RATE);
 
-    width = M5.Display.width();
-    height = M5.Display.height();
-
-    // 設定読み込み
+    // 設定読み込み（場所・モード）
     loadSettings();
 
     // M5Unified初期化
     auto cfg = M5.config();
     M5.begin(cfg);
-    
-    // シリアル通信
-    Serial.begin(115200);
-    Serial.println("M5.Ex_I2C.getSDA() : " + String(M5.Ex_I2C.getSDA()));
-    
-    // LEDの初期化
+
+    // LED初期化（ピンはGrove自動 or 固定）
+#if LED_USE_GROVE_PIN
     pixels.setPin(M5.Ex_I2C.getSDA());
+#else
+    pixels.setPin(LED_PIN);
+#endif
     pixels.begin();
     pixels.setBrightness(LED_BRIGHTNESS);
     pixels.clear();
-    for (int i = 0; i < LED_COUNT; i++) {
-        pixels.setPixelColor(i, pixels.Color(50, 50, 50)); 
-    }
     pixels.show();
 
-    // Wi-Fi接続
-    connectWiFi();
-    
-    // 初回の天気チェック
-    reloadWeatherApi();
+    // LED更新を別コアの専用タスクで回す（描画/通信にブロックされない）
+    ledState = LED_CONNECTING;
+    xTaskCreatePinnedToCore(ledTask, "ledTask", 4096, NULL, 1, NULL, 0);
+
+    // 保存済みWiFiで接続を試みる
+    if (restoreConfig() && checkConnection()) {
+        // 接続成功 → 通常モード
+        deviceMode = APP_MODE;
+        startWebServer();
+        MDNS.begin(DNS_DOMAIN);  // http://umbrella.local
+        ledState = LED_APP;
+        reloadWeatherApi();
+    } else {
+        // 未設定 or 接続失敗 → 設定モード（アクセスポイント）
+        deviceMode = SETUP_MODE;
+        setupMode();
+        ledState = LED_SETUP;
+    }
 }
 
 // ===== メインループ =====
 void loop() {
-    updateLEDs();
+    if (deviceMode == SETUP_MODE) dnsServer.processNextRequest();
+    webServer.handleClient();
+
     M5.update();
-    auto touch = M5.Touch.getDetail();
+    // ボタン長押しでWiFi設定をリセット（設定モードに戻る）
+    if (M5.BtnA.pressedFor(RESET_HOLD_MS)) {
+        resetSettings();
+    }
 
-    if (touch.isPressed()) {
-        int touchX = touch.x;
-        int touchY = touch.y;
-        if( touchY > height - 40 && touchY < height){
-            if (touchX > 0 && touchX < width / 3)                   A_Pressed();
-            if (touchX > width / 3 * 1 && touchX < width / 3 * 2)   B_Pressed();
-            if (touchX > width / 3 * 2 && touchX < width)           C_Pressed();
+    // 定期的に天気を更新（通常モードのみ）
+    if (deviceMode == APP_MODE) {
+        unsigned long now = millis();
+        if (now - lastUpdateTime >= UPDATE_INTERVAL) {
+            lastUpdateTime = now;
+            reloadWeatherApi();
         }
     }
-    // 物理ボタン処理
-    if (M5.BtnA.wasPressed()) A_Pressed();
-    if (M5.BtnB.wasPressed()) B_Pressed();
-    if (M5.BtnC.wasPressed()) C_Pressed();
-    
-    // 定期的に天気を更新
-    unsigned long currentTime = millis();
-    if (currentTime - lastUpdateTime >= UPDATE_INTERVAL) {
-        lastUpdateTime = currentTime;
-        reloadWeatherApi();
-    }
+
+    delay(5);
 }
 
-// ボタンA押下処理（左ボタン）
-void A_Pressed(){
-    Serial.println("A Button Pressed.");
-    if (currentScreen == MAIN_SCREEN || currentScreen == FORECAST_SCREEN) {
-        reloadWeatherApi();
-    } else {
-        // メイン画面に戻る
-        currentScreen = MAIN_SCREEN;
-    }
-    delay(300);
-}
+// ===== LED表示 =====
+void updateLEDs() {
+    const int brightness = 100;
 
-// ボタンB押下処理（中央ボタン）
-void B_Pressed(){
-    Serial.println("B Button Pressed.");
-    if (currentScreen == MAIN_SCREEN || currentScreen == FORECAST_SCREEN) {
-        // 詳細画面表示
-        currentScreen = DETAIL_SCREEN;
-    } else if (currentScreen == SETTINGS_SCREEN) {
-        // 都市を決定
-        setCurrentCity();
-        reloadWeatherApi();
-    }
-    delay(300);
-}
-
-// ボタンC押下処理（右ボタン）
-void C_Pressed(){
-    Serial.println("C Button Pressed.");
-    if (currentScreen == MAIN_SCREEN || currentScreen == DETAIL_SCREEN || currentScreen == FORECAST_SCREEN) {
-        currentScreen = SETTINGS_SCREEN;
-    } else if (currentScreen == SETTINGS_SCREEN) {
-        selectNextCity();
-    }
-    delay(300);
-}
-
-void updateLEDs(){
-    int brightness = 100;
-    int divisions = 1;
-    if (willRain) {
-        float _speed = 1.0 * 3.14;
-        float _fade = 1.0 + float(sin(millis() * 0.001 * _speed) * 0.5);
-        for (int offset = 0; offset <= LED_COUNT; offset++) {
-            int pos = (rotation + offset + LED_COUNT) % LED_COUNT;
-            float _amp = (abs(offset * divisions % LED_COUNT) / float(LED_COUNT)) * _fade;
-            pixels.setPixelColor(pos, 0, brightness * _amp, LED_BRIGHTNESS * _amp);
-        }
-        rotation = (rotation + 1) % LED_COUNT;
-    } else {
-        float _speed = 0.5 * 3.14;
-        float _amp = 1.0 + float(sin(millis() * 0.001 * _speed) * 0.4);
+    if (ledState == LED_SETUP) {
+        // 設定モード: シアンのゆっくり呼吸
+        float amp = 0.25 + 0.75 * (0.5 + 0.5 * sin(millis() * 0.002));
         for (int i = 0; i < LED_COUNT; i++) {
-            pixels.setPixelColor(i, brightness * _amp, brightness / 3 * _amp, 0);
+            pixels.setPixelColor(i, 0, brightness * amp, brightness * amp);
+        }
+    } else if (ledState == LED_CONNECTING) {
+        // 接続中: 黄色のコメットが回る
+        int pos = (millis() / 60) % LED_COUNT;
+        for (int i = 0; i < LED_COUNT; i++) pixels.setPixelColor(i, 0, 0, 0);
+        for (int t = 0; t < 5; t++) {
+            int p = (pos - t + LED_COUNT) % LED_COUNT;
+            float f = 1.0 - t * 0.2;
+            pixels.setPixelColor(p, brightness * f, brightness * 0.6 * f, 0);
+        }
+    } else {
+        // 通常モード
+        if (willRain) {
+            // 雨: 青の回転（時間ベース）
+            float _fade = 1.0 + float(sin(millis() * 0.001 * 3.14) * 0.5);
+            rotation = (int)(((float)(millis() % LED_ROTATION_PERIOD) / LED_ROTATION_PERIOD) * LED_COUNT) % LED_COUNT;
+            for (int offset = 0; offset <= LED_COUNT; offset++) {
+                int pos = (rotation + offset) % LED_COUNT;
+                float _amp = (abs(offset % LED_COUNT) / float(LED_COUNT)) * _fade;
+                pixels.setPixelColor(pos, 0, brightness * _amp, LED_BRIGHTNESS * _amp);
+            }
+        } else {
+            // 晴れ: オレンジのゆっくり明滅
+            float _amp = 1.0 + float(sin(millis() * 0.001 * 0.5 * 3.14) * 0.4);
+            for (int i = 0; i < LED_COUNT; i++) {
+                pixels.setPixelColor(i, brightness * _amp, brightness / 3 * _amp, 0);
+            }
         }
     }
     pixels.show();
-    delay(20);
 }
 
-// Wi-Fi接続
-void connectWiFi() {
-    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-    int attempts = 0;
-    while (WiFi.status() != WL_CONNECTED && attempts < 20) {
-        delay(500);
-        attempts++;
-    }
-    
-    if (WiFi.status() == WL_CONNECTED) {
-        delay(1000);
-    } else {
-        delay(3000);
+// LED更新タスク（別コア）
+void ledTask(void* param) {
+    for (;;) {
+        updateLEDs();
+        vTaskDelay(pdMS_TO_TICKS(LED_UPDATE_INTERVAL));
     }
 }
 
-// 天気予報を取得して12時間以内に雨が降るかチェック
+// ===== 天気取得 =====
 bool checkWeatherForecast() {
-    if (WiFi.status() != WL_CONNECTED) {
-        connectWiFi();
-        if (WiFi.status() != WL_CONNECTED) {
-            return false;
-        }
-    }
-    
+    if (WiFi.status() != WL_CONNECTED) return false;
+
     HTTPClient http;
     String url;
-    const char* cityId = getCurrentCityId();
-    
-    // 自動モードとそれ以外で分岐
-    if (strcmp(cityId, CITY_AUTO) == 0) {
-        // IPアドレスから自動判定するモード
-        url = "http://api.openweathermap.org/data/2.5/forecast?q=ip&units=" + 
-              String(UNITS) + "&lang=" + String(LANGUAGE) + "&appid=" + String(API_KEY);
+    const String common = "&units=" + String(UNITS) + "&lang=" + String(LANGUAGE) + "&appid=" + String(API_KEY);
+
+    if (isCustomLocation()) {
+        url = "http://api.openweathermap.org/data/2.5/forecast?lat=" + customLat + "&lon=" + customLon + common;
     } else {
-        // 通常の都市ID指定モード
-        url = "http://api.openweathermap.org/data/2.5/forecast?id=" + String(cityId) + 
-              "&units=" + String(UNITS) + "&lang=" + String(LANGUAGE) + "&appid=" + String(API_KEY);
+        url = "http://api.openweathermap.org/data/2.5/forecast?id=" + String(getCurrentCityId()) + common;
     }
 
     Serial.println("OpenWeatherMapに接続 : " + url);
     http.begin(url);
     int httpCode = http.GET();
-    
-    if (httpCode == HTTP_CODE_OK) {
-        String payload = http.getString();
-        http.end();
-        
-        Serial.println(payload);
 
-        // JSONデータの解析
-        DeserializationError error = deserializeJson(doc, payload);
-        
-        if (error) {
-            Serial.println("JSON解析エラー");
-            return false;
-        }
-        
-        // 12時間（4つの3時間枠）の予報をチェック
-        willRain = false;
-        rainProbability = -1;
-        weatherIcon = "";
-        temperature_min = 100;
-        temperature_max = -100;
-        
-        // 最初の予報から詳細情報を取得
-        temperature = doc["list"][0]["main"]["temp"].as<float>();
-        humidity = doc["list"][0]["main"]["humidity"].as<float>();
-        windSpeed = doc["list"][0]["wind"]["speed"].as<float>();
-        weatherDescription = doc["list"][0]["weather"][0]["description"].as<String>();
-        cityName = doc["city"]["name"].as<String>();
-
-        for (int i = 0; i < 4; i++) {
-            String weatherMain = doc["list"][i]["weather"][0]["main"].as<String>();
-            float pop = doc["list"][i]["pop"].as<float>() * 100;  // 降水確率（%）
-            float t_min = doc["list"][i]["main"]["temp_min"].as<float>();  // 最低気温
-            float t_max = doc["list"][i]["main"]["temp_max"].as<float>();  // 最高気温
-            Serial.println(doc["list"][i]["dt_txt"].as<String>() + ", weather : " + weatherMain + ", rainProbability : " + String(rainProbability) + ", pop : " + String(pop) + ", icon : " + doc["list"][i]["weather"][0]["icon"].as<String>());
-            
-            // 降水確率更新
-            if(rainProbability < pop){
-                Serial.println("降水確率更新");
-                rainProbability = pop;
-                weatherIcon = doc["list"][i]["weather"][0]["icon"].as<String>();
-            }
-            if(temperature_min > t_min){
-                temperature_min = t_min;
-            }
-            if(temperature_max < t_max){
-                temperature_max = t_max;
-            }
-
-            if (weatherMain == "Rain" || weatherMain == "Drizzle" || weatherMain == "Thunderstorm" || pop >= RAIN_THRESHOLD) {
-                willRain = true;
-            }
-        }
-        lastUpdateTime = millis();
-        return true;
-    } else {
+    if (httpCode != HTTP_CODE_OK) {
         http.end();
         Serial.println("API接続エラー");
         return false;
     }
-}
 
-void reloadWeatherApi(){
-    // 最大試行回数
-    const int MAX_RETRIES = 3;
-    const unsigned long RETRY_DELAY = 1000 * 60; // 1分
-    
-    int retryCount = 0;
-    bool success = false;
-    
-    // 天気情報の取得を試みる
-    while (!success && retryCount < MAX_RETRIES) {
-        success = checkWeatherForecast();
-        
-        if (success) {
-            // 成功時の処理
-            currentScreen = MAIN_SCREEN;
-            return;
-        } else {
-            // 失敗時の処理
-            retryCount++;
-            
-            if (retryCount < MAX_RETRIES) {
-                // 待機中にボタン操作を受け付ける
-                unsigned long startTime = millis();
-                bool aborted = false;
-                
-                while (millis() - startTime < RETRY_DELAY && !aborted) {
-                    M5.update();
-                    
-                    // 残り時間表示
-                    unsigned long remainingSecs = (RETRY_DELAY - (millis() - startTime)) / 1000;
-                    char timeMsg[32];
-                    snprintf(timeMsg, sizeof(timeMsg), "残り時間: %02lu:%02lu", remainingSecs / 60, remainingSecs % 60);
+    String payload = http.getString();
+    http.end();
 
-                    // ボタンCを押すと即時再試行
-                    if (M5.BtnC.wasPressed() || 
-                        (M5.Touch.getDetail().isPressed() && 
-                         M5.Touch.getDetail().x > SCREEN_WIDTH*2/3 && 
-                         M5.Touch.getDetail().y > SCREEN_HEIGHT - 40)) {
-                        break; // ループを抜けて再試行へ
-                    }
-                    delay(100); // 短いdelayでCPU負荷を軽減
-                }
-            } else {
-                return;
-            }
+    DeserializationError error = deserializeJson(doc, payload);
+    if (error) {
+        Serial.println("JSON解析エラー");
+        return false;
+    }
+
+    // 直近 FORECAST_CHECK_HOURS（3時間刻み）の雨をチェック
+    willRain = false;
+    rainProbability = -1;
+    const int slots = FORECAST_CHECK_HOURS / 3;
+    for (int i = 0; i < slots; i++) {
+        String weatherMain = doc["list"][i]["weather"][0]["main"].as<String>();
+        float pop = doc["list"][i]["pop"].as<float>() * 100;  // 降水確率(%)
+        if (rainProbability < pop) rainProbability = pop;
+        if (weatherMain == "Rain" || weatherMain == "Drizzle" || weatherMain == "Thunderstorm" || pop >= RAIN_THRESHOLD) {
+            willRain = true;
         }
     }
+    Serial.printf("willRain=%d / 最大降水確率=%.0f%% / 場所=%s\n",
+                  willRain, rainProbability, getLocationName().c_str());
+    lastUpdateTime = millis();
+    return true;
+}
+
+void reloadWeatherApi() {
+    for (int i = 0; i < WEATHER_MAX_RETRIES; i++) {
+        if (checkWeatherForecast()) {
+            ledState = LED_APP;
+            return;
+        }
+        delay(2000);  // 軽いリトライ間隔（次回はUPDATE_INTERVAL後）
+    }
+    Serial.println("天気取得に失敗（次回更新まで待機）");
+}
+
+// 再起動
+void rebootDevice() {
+    Serial.println("再起動します");
+    delay(500);
+    ESP.restart();
 }

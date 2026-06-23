@@ -1,64 +1,82 @@
-// config.h - ユーザー設定ファイル
+// config.h - ユーザー設定ファイル（M5 NanoC6 / 画面なし・LEDのみ版）
 
 #ifndef CONFIG_H
 #define CONFIG_H
 
-// ===== 画面設定 =====
-#define SCREEN_WIDTH 320
-#define SCREEN_HEIGHT 240
-#define SCREEN_BRIGHTNESS 255
-#define FONT_SCALE 1.0
+// ===== 基本設定 =====
+#define APP_TITLE "Umbrella Alert"                     // アプリケーションタイトル
+#define APP_VERSION "v0.0.1"                           // アプリケーションバージョン
+#define AP_SSID "Umbrella-Alert"                       // アクセスポイント名（設定モード）
+#define AP_PASS "12345678"                             // アクセスポイントパスワード
+#define AUTHOR_NAME "@kohack_v"                         // 作者名
+#define AUTHOR_URL "https://x.com/kohack_v"            // 作者URL
 
-// ===== Wi-Fi設定 =====
-// WiFi資格情報とAPIキーは secrets.h で定義（リポジトリに含めない）。
-// secrets.h.example を secrets.h にコピーして設定すること。
+// デバイスの動作モード（画面なしのためScreenModeは無し）
+enum DeviceMode {
+    SETUP_MODE,   // 設定モード（アクセスポイント＋設定ページ）
+    APP_MODE      // 通常動作（天気取得＋LED表示）
+};
+
+// ===== シリアル通信設定 =====
+#define SERIAL_BAUD_RATE 115200
+
+// ===== ネットワーク設定 =====
+#define AP_IP_ADDR IPAddress(192, 168, 4, 1)           // アクセスポイントIP（固定）
+#define WEB_SERVER_PORT 80
+#define DNS_SERVER_PORT 53
+#define DNS_DOMAIN "umbrella"                            // mDNS: http://umbrella.local
+#define WIFI_CONNECTION_TIMEOUT 20                      // 接続タイムアウト回数（500ms/回）
+
+// 外部の場所設定ページ（GitHub Pages）。設定ページからこのURL?ip=<本体IP>へ誘導
+#define SETUP_PAGE_URL "https://tsubokulab.github.io/umbrella_alert/"
+
+// ===== Wi-Fi / APIキー（secrets.h、リポジトリ非公開）=====
 #include "secrets.h"
 
 // ===== OpenWeatherMap API設定 =====
-#define CITY_ID "1850147"        // 都市ID (例: 1850147=東京)
 #define UNITS "metric"           // 温度単位 (metric=摂氏)
 #define LANGUAGE "ja"            // 言語設定 (ja=日本語)
 
 // ===== 天気チェック設定 =====
 #define UPDATE_INTERVAL 1800000  // 更新間隔: 30分 (ミリ秒)
 #define RAIN_THRESHOLD 40        // 降水確率のしきい値 (%)
+#define FORECAST_CHECK_HOURS 12  // 何時間先までの雨をチェックするか(3時間単位)
+#define WEATHER_MAX_RETRIES 3
+#define WEATHER_RETRY_DELAY 60000
+
+// タイムゾーン（カスタム未設定時のフォールバック）
+#define DEFAULT_TIMEZONE_OFFSET (9 * 3600)
 
 // ===== 都市設定 =====
-// 都市ID（OpenWeatherMapのcity ID）
-#define CITY_AUTO "auto"         // 自動（IPアドレスから判定）
+#define CITY_AUTO "auto"
 #define CITY_SAPPORO "2128295"   // 札幌
 #define CITY_TOKYO "1850147"     // 東京
-#define CITY_NAGOYA "1856057"    // 名古屋
 #define CITY_OSAKA "1853909"     // 大阪
 #define CITY_FUKUOKA "1863967"   // 福岡
 #define CITY_NAHA "1856035"      // 那覇
-
-// デフォルト設定
 #define DEFAULT_CITY_ID CITY_TOKYO
 
-// ===== ハードウェア設定 =====
-#define LED_PIN 32               // NeoPixel LEDのピン番号 (Core2: 32)
+// ===== ハードウェア設定（NeoPixel LED）=====
+#define LED_USE_GROVE_PIN 1      // 1: GroveのSDAピンを自動使用 / 0: LED_PINを使用
+#define LED_PIN 2                // NeoPixel LEDのピン番号（LED_USE_GROVE_PIN=0のとき）
 #define LED_COUNT 24             // LEDの数
-#define LED_BRIGHTNESS 255        // LED明るさ (0-255)
+#define LED_BRIGHTNESS 255       // LED明るさ (0-255)
+#define LED_UPDATE_INTERVAL 10   // LED更新の間隔(ms)。10ms=100fps
+#define LED_ROTATION_PERIOD 1500 // 雨アニメが1周する時間(ms)。fpsとは独立
 
-// ===== 色設定 =====
-#define SUNNY_COLOR M5.Display.color565(240, 240, 210)  // 晴れの背景色
-#define RAINY_COLOR M5.Display.color565(40, 62, 81)  // 雨の背景色
-#define MAX_COLOR M5.Display.color565(255,115,60)  // 最高気温色
-#define MIN_COLOR M5.Display.color565(100,170,255)  // 最低気温色
-#define DARK_COLOR M5.Display.color565(55, 71, 79)  // ダークグレー
-#define NAVY_COLOR M5.Display.color565(0, 51, 102)  // ネイビー
-#define WARNING_COLOR M5.Display.color565(0,220,255)  // 警告色
+// ===== 設定リセット =====
+#define RESET_HOLD_MS 3000       // ボタン長押しでWiFi設定リセット（ミリ秒）
 
-// ===== 画像設定 =====
-constexpr auto SUN_PATH = "/sun-icon.png";
-constexpr auto MOON_PATH = "/moon-icon.png";
-constexpr auto UMBRELLA_PATH = "/umbrella-icon.png";
-constexpr auto CLOUD_PATH = "/cloud-icon.png";
-constexpr auto DAY_CLOUD_PATH = "/day-cloud-icon.png";
-constexpr auto NIGHT_CLOUD_PATH = "/night-cloud-icon.png";
-// Designed by Anindyanfitri / Freepik - http://www.freepik.com
-// OpenWeatherMapのアイコンパス : https://openweathermap.org/img/wn/10d.png
-constexpr auto WEATHER_ICON_PATH = "https://openweathermap.org/img/wn/";
+// ===== Web UI（設定ページ）スタイル =====
+#define CONTAINER_MAX_WIDTH "480px"
+#define BORDER_RADIUS "20px"
+#define BUTTON_PADDING "16px"
+#define INPUT_PADDING "16px"
+#define THEME_PRIMARY_START "#667eea"
+#define THEME_PRIMARY_END "#764ba2"
+#define THEME_SECONDARY_START "#667eea"
+#define THEME_SECONDARY_END "#764ba2"
+#define THEME_DANGER_START "#ef4444"
+#define THEME_DANGER_END "#dc2626"
 
 #endif // CONFIG_H
