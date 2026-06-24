@@ -1,4 +1,4 @@
-// UmbrellaAlert_M5NanoC6.ino - お出かけ傘アラート（M5 NanoC6 / 画面なし・LEDのみ版）
+// UmbrellaAlert_M5NanoC6.ino - おでかけ傘アラート（M5 NanoC6 / 画面なし・LEDのみ版）
 // 12時間以内の雨予報をチェックし、リングLEDで「傘が必要か」を知らせる。
 // 初期設定は本体のアクセスポイントにスマホで接続し、ブラウザから行う。
 
@@ -92,7 +92,7 @@ void setup() {
         // 接続成功 → 通常モード
         deviceMode = APP_MODE;
         startWebServer();
-        MDNS.begin(g_mdnsHost.c_str());  // http://umbrella-xxxx.local
+        MDNS.begin(g_mdnsHost.c_str());  // http://umbrella-alert-xxxx.local
         Serial.println("通常モード: http://" + g_mdnsHost + ".local  IP=" + WiFi.localIP().toString());
         ledState = LED_APP;
         reloadWeatherApi();

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<title>場所設定 - 傘通知アプリ</title>
+<title>場所設定 - おでかけ傘アラート</title>
 <link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">☂️</text></svg>'>
 <!-- Leaflet (地図) -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -99,7 +99,7 @@
       <li>自動で開く設定画面で、ご自宅のWi-Fiを登録 → 本体が再起動します</li>
       <li>スマホを<b>自宅のWi-Fi</b>に戻し、<b>このページを開き直して</b>下の地図で場所を設定</li>
     </ol>
-    <div class="howto-note">※ 本体名は機器ごとに異なります（例 <b>umbrella-a1b2.local</b>）。本体の完了/状態ページや画面に表示される名前を上の欄に入れてください。複数台ある場合は対象の名前/IPを指定します。</div>
+    <div class="howto-note">※ 本体名は機器ごとに異なります（例 <b>umbrella-alert-a1b2.local</b>）。本体の完了/状態ページや画面に表示される名前を上の欄に入れてください。複数台ある場合は対象の名前/IPを指定します。</div>
   </details>
 
   <div class="map-wrap">
@@ -151,14 +151,14 @@
   // フッターの年（今年を自動表示）
   $("year").textContent = new Date().getFullYear();
 
-  // ---- 送信先（?ip= 未指定なら mDNS の umbrella.local を既定に）----
+  // ---- 送信先（?ip= 未指定なら mDNS の umbrella-alert.local を既定に）----
   // 常に編集可能な欄にして、mDNSが効かない端末では本体IPに変更できるようにする。
   const params = new URLSearchParams(location.search);
-  let deviceIp = (params.get("ip") || "umbrella.local").trim();
+  let deviceIp = (params.get("ip") || "umbrella-alert.local").trim();
   (function renderDeviceInfo(){
     $("deviceInfo").innerHTML =
       "送信先デバイス: <input type='text' id='ipEdit' value='" + deviceIp + "' " +
-      "placeholder='umbrella.local または 192.168.x.x'>";
+      "placeholder='umbrella-alert.local または 192.168.x.x'>";
     setTimeout(() => {
       const m = $("ipEdit");
       if (m) m.addEventListener("input", e => { deviceIp = e.target.value.trim(); });

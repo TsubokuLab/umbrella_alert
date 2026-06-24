@@ -1,4 +1,4 @@
-// umbrella_alert.ino - お出かけ傘アラート
+// umbrella_alert.ino - おでかけ傘アラート
 // 12時間以内の雨予報をチェックして、傘が必要かどうかを表示
 
 #include <LittleFS.h>      // M5Unifiedより前にインクルードする必要がある
@@ -350,7 +350,7 @@ void setup() {
             connectionStatus = "WiFi接続成功";
             M5.Display.println("接続成功 - 稼働モード");
             startWebServer();
-            MDNS.begin(g_mdnsHost.c_str());  // http://umbrella-xxxx.local（個体固有）
+            MDNS.begin(g_mdnsHost.c_str());  // http://umbrella-alert-xxxx.local（個体固有）
             // NTPで時刻同期（タイムゾーンは選択中の場所に合わせる）
             configTime(getCurrentTimezoneOffset(), 0, "ntp.nict.jp", "time.google.com", "pool.ntp.org");
             showLoadingScreen();

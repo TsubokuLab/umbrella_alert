@@ -168,7 +168,7 @@ LCD版・NanoC6版とも、**本体が飛ばすアクセスポイントにスマ
 2. スマホでAPに接続 → `http://192.168.4.1` の設定ページで **WiFiを保存** → 自動再起動
    （※IPは再起動後にしか決まらないため、場所の設定は接続後に行う）
 3. 接続中はLED=**黄色のコメットが回転**。接続成功で通常動作（雨=青回転／晴=オレンジ明滅）
-4. **場所の設定**：スマホを**自宅Wi-Fiに繋ぎ直して** `http://umbrella.local`（状態ページ）を開き、
+4. **場所の設定**：スマホを**自宅Wi-Fiに繋ぎ直して** `http://umbrella-alert.local`（状態ページ）を開き、
    **47都道府県のドロップダウン**から選ぶ → 保存で反映
    - もっと細かく指定したい場合は「🗺 地図で細かく指定する」→ GitHub Pages地図ページ（本体の実IP入り）で任意座標を指定
 5. **WiFiをやり直す**：本体ボタンを**3秒長押し**で設定をリセット → 設定モードに戻る
@@ -178,16 +178,16 @@ LCD版・NanoC6版とも、**本体が飛ばすアクセスポイントにスマ
 > （書き込み・デバッグ・設定時に便利）。内蔵LEDが光らない場合は `config.h` の `ONBOARD_LED_PIN`/`ONBOARD_LED_POWER_PIN` を確認。
 
 #### シール運用（複数台＝個体ごとに固有名）
-**各台はMAC由来の固有名**を自動で持つ（設定不要）。SSID=`Umbrella-Alert-XXXX` / 本体名=`umbrella-xxxx.local`。
+**各台はMAC由来の固有名**を自動で持つ（設定不要）。SSID=`Umbrella-Alert-XXXX` / 本体名=`umbrella-alert-xxxx.local`。
 本体は自分の名前を**シリアル・設定/完了/状態ページ・画面（Display）**に表示するので、それを見てシールを作る。
 - 推奨シール（台ごと）: その台の**固有SSIDのWiFi自動接続QR** `WIFI:T:WPA;S:Umbrella-Alert-XXXX;P:12345678;;`
   - QRで本体APへ自動接続 → キャプティブポータルが1画面のWiFi設定を表示
   - WiFi一覧でも `Umbrella-Alert-XXXX` と分かりやすく出るので、QR無しでも区別できる
-- WiFi登録後の場所設定は、その台の `https://tsubokulab.github.io/umbrella_alert/?ip=umbrella-xxxx.local` を開く
+- WiFi登録後の場所設定は、その台の `https://tsubokulab.github.io/umbrella_alert/?ip=umbrella-alert-xxxx.local` を開く
   （完了ページに専用URLとコピーボタンが出る。自宅WiFiに戻してから開く）
 
 > キャプティブポータルは設定完了・再起動で**OSが自動的に閉じる**（仕様）ため「完了画面のリンクを後で押す」前提にはしない。
-> 完了ページの専用URLを**コピー**しておくか、自宅WiFiに戻って `umbrella-xxxx.local` を開き直す。
+> 完了ページの専用URLを**コピー**しておくか、自宅WiFiに戻って `umbrella-alert-xxxx.local` を開き直す。
 > `.local` が解決しない端末は、地図ページ上部の欄に本体のIPを入力すればよい。
 
 ---
