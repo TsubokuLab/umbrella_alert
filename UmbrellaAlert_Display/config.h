@@ -30,7 +30,7 @@ enum ScreenMode {
 #define AP_IP_ADDR IPAddress(192, 168, 4, 1)           // アクセスポイントIP
 #define WEB_SERVER_PORT 80                             // Webサーバーポート
 #define DNS_SERVER_PORT 53                             // DNSサーバーポート
-#define DNS_DOMAIN "umbrella"                            // ローカルドメイン(http://device.local等でアクセスできる)
+#define DNS_DOMAIN "umbrella-alert"                      // ローカルドメイン(http://umbrella-alert-xxxx.local等でアクセスできる)
 #define WIFI_CONNECTION_TIMEOUT 20                     // WiFi接続タイムアウト回数（500ms/回）
 #define WIFI_CHECK_INTERVAL 5000                       // WiFi接続確認間隔（ミリ秒）
 #define WIFI_RECONNECT_ATTEMPTS 10                     // 再接続試行回数

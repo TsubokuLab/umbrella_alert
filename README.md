@@ -1,4 +1,4 @@
-# Umbrella Alert（お出かけ傘アラート）
+# Umbrella Alert（おでかけ傘アラート）
 
 12時間以内（3時間×4枠）の雨予報を OpenWeatherMap でチェックし、
 「傘が必要かどうか」を M5Stack デバイスで知らせるアプリです。
@@ -30,8 +30,8 @@
 
 ### 複数台運用（個体識別）
 家庭内で複数台使う場合に名前が衝突しないよう、**各台はMAC由来の固有名**を自動で持ちます（設定不要）。
-- AP SSID = `Umbrella-Alert-XXXX` / 本体名 = `umbrella-xxxx.local`（`XXXX`はMAC末尾4桁HEX）
-- 各台が固有なので、WiFi一覧で区別でき、同一LANでも `umbrella-xxxx.local` で個別アクセス可能
+- AP SSID = `Umbrella-Alert-XXXX` / 本体名 = `umbrella-alert-xxxx.local`（`XXXX`はMAC末尾4桁HEX）
+- 各台が固有なので、WiFi一覧で区別でき、同一LANでも `umbrella-alert-xxxx.local` で個別アクセス可能
 - 本体は自分の名前を**シリアル／設定・状態ページ／画面（Display）**に表示するので、それを見て**台ごとの接続QRシール**（固有SSIDのWiFi自動接続QR）を作れる
 - OpenWeatherMap APIキーは共通でOK（家庭の数台なら無料枠に対し誤差）
 

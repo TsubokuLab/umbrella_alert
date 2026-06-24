@@ -24,7 +24,7 @@ enum DeviceMode {
 #define AP_IP_ADDR IPAddress(192, 168, 4, 1)           // アクセスポイントIP（固定）
 #define WEB_SERVER_PORT 80
 #define DNS_SERVER_PORT 53
-#define DNS_DOMAIN "umbrella"                            // mDNS: http://umbrella.local
+#define DNS_DOMAIN "umbrella-alert"                      // mDNS: http://umbrella-alert-xxxx.local
 #define WIFI_CONNECTION_TIMEOUT 20                      // 接続タイムアウト回数（500ms/回）
 
 // 外部の場所設定ページ（GitHub Pages）。設定ページからこのURL?ip=<本体IP>へ誘導

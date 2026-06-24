@@ -30,7 +30,7 @@ extern void startWebServer();
 extern void rebootDevice();
 
 // ==== デバイス個体識別（複数台運用のためMAC由来で一意化）====
-// AP SSID = "Umbrella-Alert-A1B2" / mDNS = "umbrella-a1b2.local"
+// AP SSID = "Umbrella-Alert-A1B2" / mDNS = "umbrella-alert-a1b2.local"
 String g_apSsid;    // 実行時に確定（initDeviceIdentity）
 String g_mdnsHost;  // 実行時に確定（小文字）
 
