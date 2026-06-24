@@ -30,6 +30,8 @@ extern DeviceMode deviceMode;
 extern void updateNetworkList();
 extern void resetSettings();
 extern void setCustomLocation(const String& lat, const String& lon, const String& name, long tz);
+extern String g_apSsid;     // 個体固有のAP SSID
+extern String g_mdnsHost;   // 個体固有のmDNSホスト名（小文字、.local無し）
 
 // ==== ユーティリティ関数 ====
 
@@ -158,7 +160,7 @@ void startWebServer() {
             String s = "<h1>📱 " + String(APP_TITLE) + "</h1>";
             s += "<div class='info'>";
             s += "WiFi接続設定を開始します。<br>";
-            s += "アクセスポイント名: <strong>" + String(AP_SSID) + "</strong><br>";
+            s += "アクセスポイント名: <strong>" + g_apSsid + "</strong><br>";
             s += "設定用IP: <strong>" + WiFi.softAPIP().toString() + "</strong>";
             s += "</div>";
             s += "<a href='/settings' class='btn'>⚙️ WiFi設定を開始</a>";
@@ -173,6 +175,7 @@ void startWebServer() {
         webServer.on("/", []() {
             String s = "<h1>✅ 接続中</h1>";
             s += "<div class='info'>";
+            s += "本体名: <strong>" + g_mdnsHost + ".local</strong><br>";
             s += "WiFiネットワーク: <strong>" + WiFi.SSID() + "</strong><br>";
             s += "IPアドレス: <strong>" + WiFi.localIP().toString() + "</strong><br>";
             s += "信号強度: <strong>" + String(WiFi.RSSI()) + " dBm</strong><br>";

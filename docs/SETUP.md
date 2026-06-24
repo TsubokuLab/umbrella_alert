@@ -177,16 +177,18 @@ LCD版・NanoC6版とも、**本体が飛ばすアクセスポイントにスマ
 > 状態は**外付けリングと本体内蔵RGB LEDの両方**に出るので、**リングを繋いでいなくても本体LEDだけで状況が分かる**
 > （書き込み・デバッグ・設定時に便利）。内蔵LEDが光らない場合は `config.h` の `ONBOARD_LED_PIN`/`ONBOARD_LED_POWER_PIN` を確認。
 
-#### シールはQR1個に集約できる
-キャプティブポータルは設定完了・再起動で**OSが自動的に閉じる**（仕様）。そのため「完了画面のリンクを後で押す」前提にはせず、
-**設定用QRを1個だけ貼る**運用にする。
-- **唯一のQR**: 場所設定ページ `https://tsubokulab.github.io/umbrella_alert/?ip=umbrella.local`
-  - このページに「はじめての設定（WiFi登録）」手順を折りたたみで内蔵。初回はここを読み、APに繋いでWiFi登録
-  - WiFi登録は**APに接続すればキャプティブポータルが自動で開く**のでQR不要（SSID/PASSは下記テキストで足りる）
-- シールに併記する文字情報: WiFi `Umbrella-Alert` / `12345678`（任意でWiFi接続QR `WIFI:T:WPA;S:Umbrella-Alert;P:12345678;;` を足してもよい）
+#### シール運用（複数台＝個体ごとに固有名）
+**各台はMAC由来の固有名**を自動で持つ（設定不要）。SSID=`Umbrella-Alert-XXXX` / 本体名=`umbrella-xxxx.local`。
+本体は自分の名前を**シリアル・設定/完了/状態ページ・画面（Display）**に表示するので、それを見てシールを作る。
+- 推奨シール（台ごと）: その台の**固有SSIDのWiFi自動接続QR** `WIFI:T:WPA;S:Umbrella-Alert-XXXX;P:12345678;;`
+  - QRで本体APへ自動接続 → キャプティブポータルが1画面のWiFi設定を表示
+  - WiFi一覧でも `Umbrella-Alert-XXXX` と分かりやすく出るので、QR無しでも区別できる
+- WiFi登録後の場所設定は、その台の `https://tsubokulab.github.io/umbrella_alert/?ip=umbrella-xxxx.local` を開く
+  （完了ページに専用URLとコピーボタンが出る。自宅WiFiに戻してから開く）
 
-> 流れ: QRを読む→（初回のみ）APに繋いでWiFi登録→自宅WiFiに戻って同じQRを開き直し→地図で場所を保存。
-> `umbrella.local` が解決しない端末は、ページ上部の欄に本体のIPを入力すればよい。
+> キャプティブポータルは設定完了・再起動で**OSが自動的に閉じる**（仕様）ため「完了画面のリンクを後で押す」前提にはしない。
+> 完了ページの専用URLを**コピー**しておくか、自宅WiFiに戻って `umbrella-xxxx.local` を開き直す。
+> `.local` が解決しない端末は、地図ページ上部の欄に本体のIPを入力すればよい。
 
 ---
 

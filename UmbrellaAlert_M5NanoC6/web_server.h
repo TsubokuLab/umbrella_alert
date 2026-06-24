@@ -28,6 +28,8 @@ extern DeviceMode deviceMode;
 
 extern void updateNetworkList();
 extern void resetSettings();
+extern String g_apSsid;     // 個体固有のAP SSID
+extern String g_mdnsHost;   // 個体固有のmDNSホスト名（小文字、.local無し）
 
 // URLデコード
 String urlDecode(String input) {
@@ -46,7 +48,8 @@ String urlDecode(String input) {
 // 設定モードのWiFi設定ページ（1画面）。キャプティブポータルが直接これを表示する。
 String wifiSetupHtml() {
     String s = "<h1>☂️ " + String(APP_TITLE) + "</h1>";
-    s += "<div class='info'>接続するWi-Fiを選んでパスワードを入力してください</div>";
+    s += "<div class='info'>この本体: <strong>" + g_apSsid + "</strong>（" + g_mdnsHost + ".local）<br>";
+    s += "接続するWi-Fiを選んでパスワードを入力してください</div>";
     s += "<form method='get' action='setap'>";
     s += "<div style='display:flex;align-items:center;gap:10px;margin-bottom:8px;'>";
     s += "<label style='font-weight:bold;color:#374151;flex:1;'>ネットワークを選択:</label>";
@@ -95,14 +98,25 @@ void startWebServer() {
             preferences.putString("WIFI_PASSWD", pass);
             preferences.end();
 
-            String localUrl = "http://" + String(DNS_DOMAIN) + ".local";
+            String localUrl = "http://" + g_mdnsHost + ".local";                       // 個体の状態ページ
+            String mapUrl   = String(SETUP_PAGE_URL) + "?ip=" + g_mdnsHost + ".local";   // 個体の地図設定ページ
             String s = "<h1>✅ WiFi設定を保存</h1>";
-            s += "<div class='success'>本体が再起動して接続します。</div>";
+            s += "<div class='success'>この本体（<strong>" + g_mdnsHost + ".local</strong>）が再起動して接続します。</div>";
             s += "<div class='info'>📍 <strong>次に：場所の設定</strong><br>";
             s += "1. スマホを<strong>自宅のWi-Fi</strong>に接続し直す<br>";
-            s += "2. <strong>" + localUrl + "</strong> を開く<br>";
-            s += "3. 都道府県を選ぶ／地図で場所を指定</div>";
-            s += "<a href='" + localUrl + "' class='btn'>" + localUrl + " を開く</a>";
+            s += "2. 下のボタン／URLで場所設定ページを開く<br>";
+            s += "3. 都道府県を選ぶ or 地図で指定</div>";
+            // 個体専用の地図ページURL（コピー可能なテキスト＋ボタン）
+            s += "<input id='mapurl' value='" + mapUrl + "' readonly onclick='this.select()' style='font-size:13px'>";
+            s += "<button type='button' class='btn' onclick='copyUrl()'>📋 URLをコピー</button>";
+            s += "<a href='" + mapUrl + "' class='btn' target='_blank' rel='noopener'>🗺 場所設定ページを開く</a>";
+            s += "<a href='" + localUrl + "' class='btn'>" + localUrl + "（状態ページ）</a>";
+            s += "<div id='copied' style='display:none;color:#166534;text-align:center;margin-top:8px'>コピーしました</div>";
+            // HTTP=非セキュアコンテキストでも動くよう execCommand フォールバック
+            s += "<script>function copyUrl(){var i=document.getElementById('mapurl');i.select();i.setSelectionRange(0,99999);";
+            s += "var ok=false;try{ok=document.execCommand('copy');}catch(e){}";
+            s += "if(navigator.clipboard){navigator.clipboard.writeText(i.value).then(function(){show();}).catch(function(){if(ok)show();});}else if(ok){show();}";
+            s += "function show(){document.getElementById('copied').style.display='block';}}</script>";
             webServer.send(200, "text/html", makePage("設定完了", s));
             delay(2000);
             ESP.restart();
@@ -117,6 +131,7 @@ void startWebServer() {
         webServer.on("/", []() {
             String s = "<h1>✅ 接続中</h1>";
             s += "<div class='info'>";
+            s += "本体名: <strong>" + g_mdnsHost + ".local</strong><br>";
             s += "WiFi: <strong>" + WiFi.SSID() + "</strong><br>";
             s += "IP: <strong>" + WiFi.localIP().toString() + "</strong><br>";
             s += "現在の場所: <strong>" + getLocationName() + "</strong><br>";

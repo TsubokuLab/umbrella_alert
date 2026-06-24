@@ -138,7 +138,7 @@ void drawSetupPage(){
 
     // SSID・パスワード表示
     canvas.setTextDatum(TL_DATUM);
-    canvas.drawString("SSID: " + String(AP_SSID), itemX, itemY);
+    canvas.drawString("SSID: " + g_apSsid, itemX, itemY);
     itemY += itemHeight;
     canvas.drawString("PASS: " + String(AP_PASS), itemX, itemY);
     
@@ -152,7 +152,7 @@ void drawSetupPage(){
     // QRコード描画
     itemY = 125;
     // 1. WiFi接続用QRコード
-    canvas.qrcode("WIFI:T:WPA;S:" + String(AP_SSID) + ";P:" + AP_PASS + ";H:false;;", 0, height - qr_size, qr_size, 5);
+    canvas.qrcode("WIFI:T:WPA;S:" + g_apSsid + ";P:" + AP_PASS + ";H:false;;", 0, height - qr_size, qr_size, 5);
     canvas.setTextDatum(TL_DATUM);
     canvas.drawString("1. WiFiに接続", itemX, itemY);
 
@@ -201,6 +201,8 @@ void drawSettingsPage(){
     canvas.drawString("稼働: " + String(millis() / 1000) + " 秒", itemX, itemY);
     itemY += itemHeight;
     canvas.drawString("IPアドレス: " + WiFi.localIP().toString(), itemX, itemY);
+    itemY += itemHeight;
+    canvas.drawString("本体名: " + g_mdnsHost + ".local", itemX, itemY);
     itemY += itemHeight * 2;
     
     // 場所設定ページ（外部GitHub Pages）へのQRコード。?ip=で本体IPを渡す
@@ -290,6 +292,7 @@ void setup() {
     // M5Unified初期化
     auto cfg = M5.config();
     M5.begin(cfg);
+    initDeviceIdentity();  // 個体固有のSSID/mDNSホスト名を確定（複数台運用のため）
     applyBeepVolume();  // 保存済みのビープ音量を反映（小/中/大/OFF、0で消音）
     width = M5.Display.width();
     height = M5.Display.height();
@@ -347,6 +350,7 @@ void setup() {
             connectionStatus = "WiFi接続成功";
             M5.Display.println("接続成功 - 稼働モード");
             startWebServer();
+            MDNS.begin(g_mdnsHost.c_str());  // http://umbrella-xxxx.local（個体固有）
             // NTPで時刻同期（タイムゾーンは選択中の場所に合わせる）
             configTime(getCurrentTimezoneOffset(), 0, "ntp.nict.jp", "time.google.com", "pool.ntp.org");
             showLoadingScreen();

@@ -26,8 +26,14 @@
 
 ### NanoC6版（画面なし）の初期設定
 画面が無いので、WiFi・場所はすべて**本体のアクセスポイントにスマホで接続してブラウザから**設定します（LCD版と同じAP方式）。状態は**LEDで表示**：設定モード=シアン呼吸／接続中=黄コメット／通常=雨青回転・晴橙明滅。本体ボタン長押しでWiFiリセット。
-- 接続情報は固定値なので**シール印刷**で案内可能：WiFi `Umbrella-Alert` / `12345678`、設定 `http://192.168.4.1`、再設定 `http://umbrella.local`
 - 詳細は [docs/SETUP.md](docs/SETUP.md) §4-4-2 / [docs/SPEC.md](docs/SPEC.md) §12
+
+### 複数台運用（個体識別）
+家庭内で複数台使う場合に名前が衝突しないよう、**各台はMAC由来の固有名**を自動で持ちます（設定不要）。
+- AP SSID = `Umbrella-Alert-XXXX` / 本体名 = `umbrella-xxxx.local`（`XXXX`はMAC末尾4桁HEX）
+- 各台が固有なので、WiFi一覧で区別でき、同一LANでも `umbrella-xxxx.local` で個別アクセス可能
+- 本体は自分の名前を**シリアル／設定・状態ページ／画面（Display）**に表示するので、それを見て**台ごとの接続QRシール**（固有SSIDのWiFi自動接続QR）を作れる
+- OpenWeatherMap APIキーは共通でOK（家庭の数台なら無料枠に対し誤差）
 
 ## 場所設定ページ（スマホ・GitHub Pages）
 

@@ -61,6 +61,9 @@ void setup() {
     auto cfg = M5.config();
     M5.begin(cfg);
 
+    // 個体固有のSSID/mDNSホスト名を確定（複数台運用のため）
+    initDeviceIdentity();
+
     // LED初期化（ピンはGrove自動 or 固定）
 #if LED_USE_GROVE_PIN
     pixels.setPin(M5.Ex_I2C.getSDA());
@@ -89,7 +92,8 @@ void setup() {
         // 接続成功 → 通常モード
         deviceMode = APP_MODE;
         startWebServer();
-        MDNS.begin(DNS_DOMAIN);  // http://umbrella.local
+        MDNS.begin(g_mdnsHost.c_str());  // http://umbrella-xxxx.local
+        Serial.println("通常モード: http://" + g_mdnsHost + ".local  IP=" + WiFi.localIP().toString());
         ledState = LED_APP;
         reloadWeatherApi();
     } else {

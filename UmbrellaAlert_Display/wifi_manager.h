@@ -16,6 +16,7 @@
 #include <DNSServer.h>
 #include <WebServer.h>
 #include <Preferences.h>
+#include <esp_mac.h>
 #include "config.h"
 
 // ==== 外部変数・関数の宣言 ====
@@ -31,6 +32,27 @@ extern Preferences preferences;
 // 外部関数の宣言
 extern void startWebServer();
 extern void rebootDevice();
+
+// ==== デバイス個体識別（複数台運用のためMAC由来で一意化）====
+// AP SSID = "Umbrella-Alert-A1B2" / mDNS = "umbrella-a1b2.local"
+String g_apSsid;
+String g_mdnsHost;
+
+String deviceSuffix() {
+    uint8_t mac[6] = {0};
+    esp_read_mac(mac, ESP_MAC_WIFI_STA);
+    char buf[5];
+    snprintf(buf, sizeof(buf), "%02X%02X", mac[4], mac[5]);
+    return String(buf);
+}
+
+void initDeviceIdentity() {
+    String suf = deviceSuffix();
+    g_apSsid   = String(AP_SSID) + "-" + suf;
+    g_mdnsHost = String(DNS_DOMAIN) + "-" + suf;
+    g_mdnsHost.toLowerCase();
+    Serial.println("デバイス識別: SSID=" + g_apSsid + " / http://" + g_mdnsHost + ".local");
+}
 
 // ==== WiFi管理機能の実装 ====
 
@@ -101,18 +123,18 @@ void setupMode() {
     // アクセスポイント開始
     delay(100);
     WiFi.softAPConfig(AP_IP_ADDR, AP_IP_ADDR, IPAddress(255, 255, 255, 0));
-    WiFi.softAP(AP_SSID, AP_PASS);
+    WiFi.softAP(g_apSsid.c_str(), AP_PASS);
     WiFi.mode(WIFI_AP);
-    
+
     // Webサーバー開始
     startWebServer();
-    
-    // DNSサーバー開始（mDNS対応）
-    if (MDNS.begin(DNS_DOMAIN)) {
-        Serial.println("MDNS responder started : http://" + String(DNS_DOMAIN) + ".local");
+
+    // DNSサーバー開始（mDNS対応・個体固有ホスト名）
+    if (MDNS.begin(g_mdnsHost.c_str())) {
+        Serial.println("MDNS responder started : http://" + g_mdnsHost + ".local");
     }
 
-    Serial.printf("\nアクセスポイント開始: \"%s\"\n", AP_SSID);
+    Serial.printf("\nアクセスポイント開始: \"%s\"\n", g_apSsid.c_str());
     Serial.printf("設定URL: http://%s\n", AP_IP_ADDR.toString().c_str());
 }
 
