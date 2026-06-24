@@ -10,6 +10,7 @@
 #include <DNSServer.h>
 #include <WebServer.h>
 #include <M5Unified.h>
+#include <time.h>          // NTP時刻（雨判定のdt比較）用
 
 #include "config.h"
 #include "styles.h"
@@ -94,6 +95,8 @@ void setup() {
         startWebServer();
         MDNS.begin(g_mdnsHost.c_str());  // http://umbrella-alert-xxxx.local
         Serial.println("通常モード: http://" + g_mdnsHost + ".local  IP=" + WiFi.localIP().toString());
+        // NTP同期（雨判定でforecastのdtと現在時刻[UTC]を比較するため）。オフセット0=UTCでepochを得る。
+        configTime(0, 0, "ntp.nict.jp", "time.google.com", "pool.ntp.org");
         ledState = LED_APP;
         reloadWeatherApi();
     } else {
@@ -263,20 +266,35 @@ bool checkWeatherForecast() {
         return false;
     }
 
-    // 直近 notifyHours（3時間刻みに切り上げ）の雨をチェック
+    // 「今から notifyHours 以内」に入る予報枠だけを判定する（dtベースの時刻判定）。
+    // forecastは3時間刻みのpoint予報。各枠のdt(UTC epoch)が now+horizon 以内なら対象。
+    // NTP未同期(初回直後など)は時刻が無効なので、枠数での切り上げにフォールバックする。
     willRain = false;
     rainProbability = -1;
-    const int slots = notifyForecastSlots();
-    for (int i = 0; i < slots; i++) {
-        String weatherMain = doc["list"][i]["weather"][0]["main"].as<String>();
-        float pop = doc["list"][i]["pop"].as<float>() * 100;  // 降水確率(%)
+    time_t now = time(nullptr);
+    bool timeValid = (now > 1600000000);  // 2020年以降ならNTP同期済みとみなす
+    long horizon = (long)getNotifyHours() * 3600;  // 秒
+    JsonArray list = doc["list"].as<JsonArray>();
+    int matched = 0;
+    for (int i = 0; i < (int)list.size(); i++) {
+        if (timeValid) {
+            long dt = list[i]["dt"].as<long>();
+            if (dt > now + horizon) break;        // 指定時間より先は見ない（昇順なので打ち切り）
+        } else if (i >= notifyForecastSlots()) {
+            break;                                 // フォールバック: 枠数で
+        }
+        String weatherMain = list[i]["weather"][0]["main"].as<String>();
+        float pop = list[i]["pop"].as<float>() * 100;  // 降水確率(%)
         if (rainProbability < pop) rainProbability = pop;
         if (weatherMain == "Rain" || weatherMain == "Drizzle" || weatherMain == "Thunderstorm" || pop >= RAIN_THRESHOLD) {
             willRain = true;
         }
+        matched++;
     }
-    Serial.printf("willRain=%d / 最大降水確率=%.0f%% / 場所=%s\n",
-                  willRain, rainProbability, getLocationName().c_str());
+    // 直近N時間に予報枠が1つも入らない場合（小さいN）は「雨なし」。表示用に確率は0%扱い。
+    if (matched == 0) rainProbability = 0;
+    Serial.printf("willRain=%d / 最大降水確率=%.0f%% / 対象枠=%d / 通知=%dh / 場所=%s\n",
+                  willRain, rainProbability, matched, getNotifyHours(), getLocationName().c_str());
     lastUpdateTime = millis();
     return true;
 }

@@ -682,33 +682,48 @@ bool checkWeatherForecast() {
                        ? customName
                        : doc["city"]["name"].as<String>();
 
-        // 予報は3時間刻み。チェック枠数 = 通知時間(notifyHours)を3hに切り上げ
-        const int forecastSlots = notifyForecastSlots();
-        for (int i = 0; i < forecastSlots; i++) {
-            String weatherMain = doc["list"][i]["weather"][0]["main"].as<String>();
-            float pop = doc["list"][i]["pop"].as<float>() * 100;  // 降水確率（%）
-            float t_min = doc["list"][i]["main"]["temp_min"].as<float>();  // 最低気温
-            float t_max = doc["list"][i]["main"]["temp_max"].as<float>();  // 最高気温
-            Serial.println(doc["list"][i]["dt_txt"].as<String>() + ", weather : " + weatherMain + ", rainProbability : " + String(rainProbability) + ", pop : " + String(pop) + ", icon : " + doc["list"][i]["weather"][0]["icon"].as<String>());
-            
+        // 「今から notifyHours 以内」に入る予報枠だけを判定する（dtベースの時刻判定）。
+        // forecastは3時間刻みのpoint予報。各枠のdt(UTC epoch)が now+horizon 以内なら対象。
+        // NTP未同期時は枠数での切り上げにフォールバック。
+        time_t now = time(nullptr);
+        bool timeValid = (now > 1600000000);  // 2020年以降ならNTP同期済みとみなす
+        long horizon = (long)notifyHours * 3600;  // 秒
+        JsonArray list = doc["list"].as<JsonArray>();
+        int matched = 0;
+        for (int i = 0; i < (int)list.size(); i++) {
+            if (timeValid) {
+                long dt = list[i]["dt"].as<long>();
+                if (dt > now + horizon) break;        // 指定時間より先は見ない（昇順なので打ち切り）
+            } else if (i >= notifyForecastSlots()) {
+                break;                                 // フォールバック: 枠数で
+            }
+            String weatherMain = list[i]["weather"][0]["main"].as<String>();
+            float pop = list[i]["pop"].as<float>() * 100;  // 降水確率（%）
+            float t_min = list[i]["main"]["temp_min"].as<float>();  // 最低気温
+            float t_max = list[i]["main"]["temp_max"].as<float>();  // 最高気温
+            Serial.println(list[i]["dt_txt"].as<String>() + ", weather : " + weatherMain + ", rainProbability : " + String(rainProbability) + ", pop : " + String(pop) + ", icon : " + list[i]["weather"][0]["icon"].as<String>());
+
             // 降水確率更新
             if(rainProbability < pop){
-                Serial.println("降水確率更新");
                 rainProbability = pop;
-                weatherIcon = "/" + doc["list"][i]["weather"][0]["icon"].as<String>() + ".png";
-                //weatherIcon = doc["list"][i]["weather"][0]["icon"].as<String>();
+                weatherIcon = "/" + list[i]["weather"][0]["icon"].as<String>() + ".png";
             }
-            if(temperature_min > t_min){
-                temperature_min = t_min;
-            }
-            if(temperature_max < t_max){
-                temperature_max = t_max;
-            }
+            if(temperature_min > t_min) temperature_min = t_min;
+            if(temperature_max < t_max) temperature_max = t_max;
 
             if (weatherMain == "Rain" || weatherMain == "Drizzle" || weatherMain == "Thunderstorm" || pop >= RAIN_THRESHOLD) {
                 willRain = true;
             }
+            matched++;
         }
+        // 直近N時間に予報枠が無い場合（小さいN）: 傘判定は「雨なし」のまま、表示用データだけ次の枠から補完
+        if (matched == 0) {
+            rainProbability = 0;
+            weatherIcon = "/" + list[0]["weather"][0]["icon"].as<String>() + ".png";
+            temperature_min = list[0]["main"]["temp_min"].as<float>();
+            temperature_max = list[0]["main"]["temp_max"].as<float>();
+        }
+        Serial.printf("willRain=%d / pop=%.0f%% / 対象枠=%d / 通知=%dh\n", willRain, rainProbability, matched, notifyHours);
         lastUpdateTime = millis();
         return true;
     } else {
