@@ -29,6 +29,7 @@ extern DeviceMode deviceMode;
 // 外部関数の宣言
 extern void updateNetworkList();
 extern void resetSettings();
+extern void reloadWeatherApi();  // 設定変更を再起動せず即時反映するため
 extern void setCustomLocation(const String& lat, const String& lon, const String& name, long tz);
 extern String g_apSsid;     // 個体固有のAP SSID
 extern String g_mdnsHost;   // 個体固有のmDNSホスト名（小文字、.local無し）
@@ -190,21 +191,21 @@ void startWebServer() {
             s += "<select name='hours' onchange=\"document.getElementById('nhBtn').disabled=(this.value=='" + String(getNotifyHours()) + "');\" style='width:auto;flex:none;margin:0;'>" + notifyHoursOptionsHtml() + "</select>";
             s += "<span style='font-size:14px;color:#374151;'>以内の雨予報を通知する</span>";
             s += "</div>";
-            s += "<button type='submit' id='nhBtn' class='btn' disabled>💾 保存して再起動</button></form>";
+            s += "<button type='submit' id='nhBtn' class='btn' disabled>💾 保存して反映</button></form>";
 
             s += "<a href='/reset' class='btn btn-danger'>🔄 設定をリセット</a>";
             webServer.send(200, "text/html", makePage("稼働中", s));
         });
 
-        // 雨の通知（チェック時間）を変更 → 再起動で反映
+        // 雨の通知（チェック時間）を変更 → 再起動せずに反映
         webServer.on("/setnotify", []() {
             if (webServer.hasArg("hours")) setNotifyHours(webServer.arg("hours").toInt());
             String s = "<h1>✅ 雨の通知を変更しました</h1>";
-            s += "<div class='success'>直近 <strong>" + String(getNotifyHours()) + " 時間</strong>以内の雨予報で通知します。<br>本体が再起動して反映します。</div>";
+            s += "<div class='success'>直近 <strong>" + String(getNotifyHours()) + " 時間</strong>以内の雨予報で通知します。</div>";
+            s += "<a href='/' class='btn'>← 設定ページに戻る</a>";
             webServer.sendHeader("Cache-Control", "no-store");
             webServer.send(200, "text/html", makePage("通知設定", s));
-            delay(500);
-            ESP.restart();
+            reloadWeatherApi();  // 再起動せずに即時反映
         });
         
         // 設定リセット処理
@@ -237,14 +238,13 @@ void startWebServer() {
             String disp = name.length() > 0 ? name : (lat + ", " + lon);
             String s = "<h1>✅ 保存しました</h1>";
             s += "<div class='success'>場所を保存しました: <strong>" + disp + "</strong><br>";
-            s += "本体が再起動して反映します（数十秒）。このタブは自動で閉じます。</div>";
+            s += "新しい場所で天気を取得しました。このタブは自動で閉じます。</div>";
             // 設定ページから別タブ(window.open)で開かれた場合、表示後に自動で閉じる
             s += "<script>setTimeout(function(){window.close();},1500);</script>";
             webServer.sendHeader("Access-Control-Allow-Origin", "*");
             webServer.sendHeader("Cache-Control", "no-store");  // ブラウザにキャッシュさせない
             webServer.send(200, "text/html", makePage("保存完了", s));
-            delay(500);
-            ESP.restart();  // 反映のため再起動
+            reloadWeatherApi();  // 再起動せずに即時反映
         });
     }
     webServer.begin();

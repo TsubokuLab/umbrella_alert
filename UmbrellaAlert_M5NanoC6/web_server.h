@@ -28,6 +28,7 @@ extern DeviceMode deviceMode;
 
 extern void updateNetworkList();
 extern void resetSettings();
+extern void reloadWeatherApi();  // 設定変更を再起動せず即時反映するため
 extern String g_apSsid;     // 個体固有のAP SSID
 extern String g_mdnsHost;   // 個体固有のmDNSホスト名（小文字、.local無し）
 
@@ -171,6 +172,9 @@ void startWebServer() {
             s += "function tick(){document.getElementById('uptime').textContent=fmt(up);up++;}";
             s += "tick();setInterval(tick,1000);</script>";
 
+            // WiFiやり直し案内（稼働中セクションの末尾）
+            s += "<div class='info' style='font-size:13px;color:#6b7280;'>WiFi設定をやり直す場合は、本体ボタンを長押ししてください。</div>";
+
             // 場所の設定（都道府県プリセット）
             s += "<label style='display:block;margin-bottom:8px;font-weight:bold;color:#374151;'>📍 場所の設定</label>";
             s += "<form method='get' action='setpref'>";
@@ -189,32 +193,31 @@ void startWebServer() {
             s += "<select name='hours' onchange=\"document.getElementById('nhBtn').disabled=(this.value=='" + String(getNotifyHours()) + "');\" style='width:auto;flex:none;margin:0;'>" + notifyHoursOptionsHtml() + "</select>";
             s += "<span style='font-size:14px;color:#374151;'>以内の雨予報を通知する</span>";
             s += "</div>";
-            s += "<button type='submit' id='nhBtn' class='btn' disabled>💾 保存して再起動</button></form>";
+            s += "<button type='submit' id='nhBtn' class='btn' disabled>💾 保存して反映</button></form>";
 
-            s += "<div class='info' style='font-size:13px;color:#6b7280;'>WiFi設定をやり直す場合は、本体ボタンを長押ししてください。</div>";
             webServer.send(200, "text/html", makePage("稼働中", s));
         });
 
-        // 都道府県を選択 → 再起動で反映
+        // 都道府県を選択 → 再起動せずに反映（その場で天気を再取得）
         webServer.on("/setpref", []() {
             if (webServer.hasArg("pref")) setPrefecture(webServer.arg("pref").toInt());
             String s = "<h1>✅ 場所を変更しました</h1>";
-            s += "<div class='success'>「" + getLocationName() + "」に設定しました。<br>本体が再起動して反映します。</div>";
+            s += "<div class='success'>「" + getLocationName() + "」に設定しました。新しい場所で天気を取得しました。</div>";
+            s += "<a href='/' class='btn'>← 設定ページに戻る</a>";
             webServer.sendHeader("Cache-Control", "no-store");
             webServer.send(200, "text/html", makePage("場所変更", s));
-            delay(500);
-            ESP.restart();
+            reloadWeatherApi();  // 再起動せずに即時反映
         });
 
-        // 雨の通知（チェック時間）を変更 → 再起動で反映
+        // 雨の通知（チェック時間）を変更 → 再起動せずに反映
         webServer.on("/setnotify", []() {
             if (webServer.hasArg("hours")) setNotifyHours(webServer.arg("hours").toInt());
             String s = "<h1>✅ 雨の通知を変更しました</h1>";
-            s += "<div class='success'>直近 <strong>" + String(getNotifyHours()) + " 時間</strong>以内の雨予報で通知します。<br>本体が再起動して反映します。</div>";
+            s += "<div class='success'>直近 <strong>" + String(getNotifyHours()) + " 時間</strong>以内の雨予報で通知します。</div>";
+            s += "<a href='/' class='btn'>← 設定ページに戻る</a>";
             webServer.sendHeader("Cache-Control", "no-store");
             webServer.send(200, "text/html", makePage("通知設定", s));
-            delay(500);
-            ESP.restart();
+            reloadWeatherApi();  // 再起動せずに即時反映
         });
 
         // WiFi設定リセット
@@ -243,13 +246,12 @@ void startWebServer() {
             String disp = name.length() > 0 ? name : (lat + ", " + lon);
             String s = "<h1>✅ 保存しました</h1>";
             s += "<div class='success'>場所を保存しました: <strong>" + disp + "</strong><br>";
-            s += "本体が再起動して反映します。このタブは自動で閉じます。</div>";
+            s += "新しい場所で天気を取得しました。このタブは自動で閉じます。</div>";
             s += "<script>setTimeout(function(){window.close();},1500);</script>";
             webServer.sendHeader("Access-Control-Allow-Origin", "*");
             webServer.sendHeader("Cache-Control", "no-store");
             webServer.send(200, "text/html", makePage("保存完了", s));
-            delay(500);
-            ESP.restart();
+            reloadWeatherApi();  // 再起動せずに即時反映
         });
     }
     webServer.begin();
