@@ -173,7 +173,8 @@ void startWebServer() {
         
         // ステータスページ（通常モード）
         webServer.on("/", []() {
-            String s = "<h1>✅ 接続中</h1>";
+            String s = "<h1>☂️ " + String(APP_TITLE) + "</h1>";
+            s += "<label style='display:block;margin-bottom:8px;font-weight:bold;color:#374151;'>✅ 稼働中</label>";
             s += "<div class='info'>";
             s += "本体名: <strong>" + g_mdnsHost + ".local</strong><br>";
             s += "WiFiネットワーク: <strong>" + WiFi.SSID() + "</strong><br>";

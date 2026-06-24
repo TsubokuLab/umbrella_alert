@@ -4,6 +4,9 @@
 *
 * HTMLページのスタイルを生成する関数群
 * config.hの設定を基にスタイルを動的に生成
+*
+* デザインの「正」は GitHub Pages（web/index.html）。本ファイルのCSSは
+* それに準拠させ、デバイス側の設定ページと見た目を揃える。
 *******************************************************************************
 */
 
@@ -12,148 +15,101 @@
 
 #include "config.h"
 
-// CSSスタイル生成関数
+// CSSスタイル生成関数（GitHub Pages = web/index.html のCSSに準拠）
 String generateCSS() {
     String css = "<style>";
+    String P0 = String(THEME_PRIMARY_START);   // #667eea
+    String P1 = String(THEME_PRIMARY_END);     // #764ba2
 
-    // 基本スタイル
+    css += "*{box-sizing:border-box;}";
+
+    // 本体
     css += "body{";
-    css += "font-family:Arial,sans-serif;";
-    css += "background:linear-gradient(135deg," + String(THEME_PRIMARY_START) + "," + String(THEME_PRIMARY_END) + ");";
-    css += "min-height:100vh;";
-    css += "display:flex;";
-    css += "align-items:center;";
-    css += "justify-content:center;";
-    css += "margin:0;";
-    css += "padding:20px;";
-    css += "box-sizing:border-box;";
+    css += "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;";
+    css += "margin:0;padding:16px;";
+    css += "background:linear-gradient(135deg," + P0 + "," + P1 + ");";
+    css += "min-height:100vh;color:#1f2937;";
     css += "}";
 
-    // コンテナスタイル
+    // コンテナ
     css += ".container{";
-    css += "box-sizing:border-box;";
-    css += "background:rgba(255,255,255,0.95);";
-    css += "border-radius:" + String(BORDER_RADIUS) + ";";
-    css += "padding:40px;";
-    css += "box-shadow:0 25px 50px rgba(0,0,0,0.25);";
-    css += "backdrop-filter:blur(10px);";
-    css += "max-width:" + String(CONTAINER_MAX_WIDTH) + ";";
-    css += "width:100%;";
-    css += "animation:slideIn 0.5s ease-out;";
+    css += "max-width:" + String(CONTAINER_MAX_WIDTH) + ";margin:0 auto;";
+    css += "background:rgba(255,255,255,0.97);border-radius:" + String(BORDER_RADIUS) + ";";
+    css += "padding:24px;box-shadow:0 25px 50px rgba(0,0,0,0.25);";
     css += "}";
 
-    // アニメーション
-    css += "@keyframes slideIn{";
-    css += "from{opacity:0;transform:translateY(30px);}";
-    css += "to{opacity:1;transform:translateY(0);}";
-    css += "}";
+    // 見出し
+    css += "h1{font-size:22px;text-align:center;margin:0 0 4px;color:#2d3748;font-weight:700;}";
+    css += "h2{font-size:18px;text-align:center;margin:0 0 16px;color:#4a5568;font-weight:700;}";
+    css += ".sub{text-align:center;color:#6b7280;font-size:13px;margin-bottom:16px;}";
 
-    // タイトルスタイル
-    css += "h1{";
-    css += "text-align:center;";
-    css += "color:#2d3748;";
-    css += "margin-bottom:30px;";
-    css += "font-size:28px;";
-    css += "font-weight:bold;";
-    css += "}";
+    // ラベル
+    css += "label{display:block;font-weight:600;font-size:14px;margin:10px 0 6px;color:#374151;}";
 
-    // 見出し（H2）
-    css += "h2{";
-    css += "text-align:center;";
-    css += "color:#4a5568;";
-    css += "margin-top:0;";
-    css += "margin-bottom:20px;";
-    css += "font-size:18px;";
-    css += "font-weight:bold;";
-    css += "}";
-    css += ".btn{";
-    css += "width:100%;";
-    css += "padding:" + String(BUTTON_PADDING) + " 0px;";
-    css += "background:linear-gradient(135deg," + String(THEME_SECONDARY_START) + "," + String(THEME_SECONDARY_END) + ");";
-    css += "color:white;";
-    css += "border:none;";
-    css += "border-radius:12px;";
-    css += "font-size:16px;";
-    css += "font-weight:600;";
-    css += "cursor:pointer;";
-    css += "margin-top:10px;";
-    css += "transition:all 0.3s ease;";
-    css += "text-decoration:none;";
-    css += "display:block;";
-    css += "text-align:center;";
-    css += "}";
-
-    // ボタンホバー効果
-    css += ".btn:hover{";
-    css += "transform:translateY(-2px);";
-    css += "box-shadow:0 8px 25px rgba(0,0,0,0.15);";
-    css += "}";
-
-    // 危険ボタン
-    css += ".btn-danger{";
-    css += "background:linear-gradient(135deg," + String(THEME_DANGER_START) + "," + String(THEME_DANGER_END) + ");";
-    css += "}";
-
-    // 入力フィールドスタイル
+    // 入力
     css += "input,select{";
-    css += "width:100%;";
-    css += "padding:" + String(INPUT_PADDING) + ";";
-    css += "border:2px solid #e2e8f0;";
-    css += "border-radius:12px;";
-    css += "font-size:16px;";
-    css += "margin-bottom:20px;";
-    css += "box-sizing:border-box;";
-    css += "transition:border-color 0.3s ease;";
+    css += "width:100%;padding:14px;border:2px solid #e2e8f0;border-radius:12px;";
+    css += "font-size:16px;font-family:inherit;transition:border-color .2s;box-sizing:border-box;";
+    css += "margin-bottom:12px;";
+    css += "}";
+    css += "input:focus,select:focus{outline:none;border-color:" + P0 + ";box-shadow:0 0 0 3px rgba(102,126,234,0.1);}";
+
+    // 大きいボタン（保存など主要アクション）
+    css += ".btn{";
+    css += "width:100%;padding:16px;border:none;border-radius:12px;";
+    css += "font-size:16px;font-weight:700;font-family:inherit;line-height:1.5;cursor:pointer;margin-top:14px;";
+    css += "color:#fff;background:linear-gradient(135deg," + P0 + "," + P1 + ");";
+    css += "transition:transform .15s,box-shadow .15s;";
+    css += "display:block;text-align:center;text-decoration:none;box-sizing:border-box;";
+    css += "}";
+    css += ".btn:hover{transform:translateY(-2px);box-shadow:0 8px 25px rgba(0,0,0,0.15);}";
+    css += ".btn:active{transform:translateY(1px);}";
+    css += ".btn.secondary{background:#fff;color:" + P1 + ";border:2px solid " + P0 + ";}";
+    css += ".btn-danger{background:linear-gradient(135deg," + String(THEME_DANGER_START) + "," + String(THEME_DANGER_END) + ");}";
+
+    // 小さいボタン（コピー等の補助操作）
+    css += ".btn-sm{";
+    css += "flex:none;padding:8px 12px;border-radius:10px;border:2px solid " + P0 + ";";
+    css += "background:#fff;color:" + P1 + ";font-size:13px;font-weight:700;font-family:inherit;";
+    css += "cursor:pointer;white-space:nowrap;";
+    css += "}";
+    css += ".btn-sm:active{transform:translateY(1px);}";
+
+    // 手順ボックス（GitHub Pages の「はじめての設定」.howto に準拠）
+    css += ".howto{";
+    css += "background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;";
+    css += "padding:8px 14px;margin-bottom:16px;font-size:14px;color:#374151;";
+    css += "}";
+    css += ".howto-title{font-weight:700;color:#4338ca;padding:4px 0;}";
+    css += ".howto ol{margin:8px 0;padding-left:20px;line-height:1.7;}";
+    css += ".howto-note{font-size:12px;color:#6b7280;margin-top:6px;}";
+
+    // URL等の1行表示＋小ボタン
+    css += ".urlrow{display:flex;align-items:center;gap:8px;margin:8px 0 2px;}";
+    css += ".urlrow .u{";
+    css += "flex:1;font-size:13px;color:#1e3a8a;word-break:break-all;";
+    css += "background:rgba(102,126,234,0.08);border:1px solid #c7d2fe;";
+    css += "border-radius:8px;padding:8px 10px;";
     css += "}";
 
-    // フォーカス時のスタイル
-    css += "input:focus,select:focus{";
-    css += "outline:none;";
-    css += "border-color:" + String(THEME_PRIMARY_START) + ";";
-    css += "box-shadow:0 0 0 3px rgba(102,126,234,0.1);";
-    css += "}";
-
-    // 情報表示用スタイル
+    // 情報・成功メッセージ（GitHub Pages の .device / .status トーンに準拠）
     css += ".info{";
-    css += "background:rgba(59,130,246,0.1);";
-    css += "border:1px solid rgba(59,130,246,0.2);";
-    css += "border-radius:8px;";
-    css += "padding:16px;";
-    css += "margin:16px 0;";
-    css += "color:#1e40af;";
+    css += "background:rgba(102,126,234,0.1);border:1px solid rgba(102,126,234,0.25);";
+    css += "border-radius:10px;padding:10px 12px;margin:14px 0;color:#1e40af;";
+    css += "font-size:14px;word-break:break-all;";
     css += "}";
-
-    // 成功メッセージ
     css += ".success{";
-    css += "background:rgba(34,197,94,0.1);";
-    css += "border:1px solid rgba(34,197,94,0.2);";
-    css += "border-radius:8px;";
-    css += "padding:16px;";
-    css += "margin:16px 0;";
-    css += "color:#166534;";
+    css += "background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);";
+    css += "border-radius:10px;padding:12px;margin:14px 0;color:#166534;font-size:14px;";
     css += "}";
 
     // フッター
-    css += ".footer{";
-    css += "text-align:center;";
-    css += "margin-top:30px;";
-    css += "padding-top:20px;";
-    css += "border-top:1px solid #e2e8f0;";
-    css += "color:#64748b;";
-    css += "font-size:14px;";
-    css += "}";
+    css += ".footer{text-align:center;margin-top:20px;padding-top:16px;";
+    css += "border-top:1px solid #e2e8f0;color:#9ca3af;font-size:12px;}";
+    css += ".footer a{color:" + P1 + ";text-decoration:none;}";
 
-    // フッターリンク
-    css += ".footer a{";
-    css += "color:" + String(THEME_PRIMARY_START) + ";";
-    css += "text-decoration:none;";
-    css += "}";
-
-    // レスポンシブ対応
-    css += "@media (max-width:600px){";
-    css += ".container{padding:20px;margin:10px;}";
-    css += "h1{font-size:24px;}";
-    css += "}";
+    // レスポンシブ
+    css += "@media (max-width:600px){.container{padding:20px;}h1{font-size:20px;}}";
 
     css += "</style>";
     return css;

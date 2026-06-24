@@ -58,10 +58,33 @@ String wifiSetupHtml() {
     s += "<select id='networkSelect' name='ssid' style='margin-bottom:20px;'>" + ssidList + "</select>";
     s += "<label style='display:block;margin-bottom:8px;font-weight:bold;color:#374151;'>パスワード:</label>";
     s += "<input name='pass' type='password' placeholder='ネットワークパスワードを入力' maxlength='64'>";
-    s += "<button type='submit' class='btn'>🔗 接続設定を保存</button></form>";
+
+    // 保存後の場所設定の案内（GitHub Pagesの「はじめての設定」に準拠したステップ）。
+    // 再起動でこの画面は閉じるため、先に本体URLをコピーさせる。
+    String localUrl = "http://" + g_mdnsHost + ".local";
+    s += "<div class='howto'>";
+    s += "<div class='howto-title'>📍 保存後の場所設定（先にURLをコピー）</div>";
+    s += "<ol>";
+    s += "<li>下の本体URLを<b>コピー</b>する</li>";
+    s += "<li>「🛜 接続設定を保存」を押す（本体が再起動）</li>";
+    s += "<li>スマホを<b>自宅のWi-Fi</b>に接続し直す</li>";
+    s += "<li>コピーしたURLを開いて<b>場所を設定</b>する</li>";
+    s += "</ol>";
+    s += "<div class='urlrow'><span class='u' id='localurl'>" + localUrl + "</span>";
+    s += "<button type='button' class='btn-sm' onclick='copyUrl()'>📋 コピー</button></div>";
+    s += "<div id='copied' style='display:none;color:#166534;font-size:13px;margin:4px 0 0;'>コピーしました</div>";
+    s += "</div>";
+
+    s += "<button type='submit' class='btn'>🛜 接続設定を保存</button></form>";
     s += "<script>function refreshNetworks(){var btn=event.target;btn.innerHTML='更新中...';btn.disabled=true;";
     s += "fetch('/refresh-networks').then(r=>r.json()).then(d=>{document.getElementById('networkSelect').innerHTML=d.networks;btn.innerHTML='🔄 更新';btn.disabled=false;})";
-    s += ".catch(e=>{btn.innerHTML='🔄 更新';btn.disabled=false;alert('更新に失敗しました');});}</script>";
+    s += ".catch(e=>{btn.innerHTML='🔄 更新';btn.disabled=false;alert('更新に失敗しました');});}";
+    // テキスト表示(span)からコピー。HTTP=非セキュアコンテキストでも動くよう execCommand フォールバック。
+    s += "function copyUrl(){var t=document.getElementById('localurl').textContent;";
+    s += "if(navigator.clipboard){navigator.clipboard.writeText(t).then(show).catch(function(){fb(t);});}else{fb(t);}";
+    s += "function fb(x){var ta=document.createElement('textarea');ta.value=x;ta.style.position='fixed';ta.style.opacity='0';";
+    s += "document.body.appendChild(ta);ta.select();try{document.execCommand('copy');show();}catch(e){}document.body.removeChild(ta);}";
+    s += "function show(){document.getElementById('copied').style.display='block';}}</script>";
     return makePage("WiFi設定", s);
 }
 
@@ -98,24 +121,27 @@ void startWebServer() {
             preferences.putString("WIFI_PASSWD", pass);
             preferences.end();
 
-            String localUrl = "http://" + g_mdnsHost + ".local";                       // 個体の状態ページ
-            String mapUrl   = String(SETUP_PAGE_URL) + "?ip=" + g_mdnsHost + ".local";   // 個体の地図設定ページ
+            String localUrl = "http://" + g_mdnsHost + ".local";   // 個体の状態ページ（場所設定はここに集約）
             String s = "<h1>✅ WiFi設定完了</h1>";
             s += "<div class='success'>この本体（<strong>" + g_mdnsHost + ".local</strong>）が再起動して接続します。</div>";
-            s += "<div class='info'>📍 <strong>次に：場所の設定</strong><br>";
-            s += "1. スマホを<strong>自宅のWi-Fi</strong>に接続し直す<br>";
-            s += "2. 下のボタン／URLで場所設定ページを開く<br>";
-            s += "3. 都道府県を選ぶ or 地図で指定</div>";
-            // 個体専用の地図ページURL（コピー可能なテキスト＋ボタン）
-            s += "<input id='mapurl' value='" + mapUrl + "' readonly onclick='this.select()' style='font-size:13px'>";
-            s += "<button type='button' class='btn' onclick='copyUrl()'>📋 URLをコピー</button>";
-            s += "<a href='" + mapUrl + "' class='btn' target='_blank' rel='noopener'>🗺 場所設定ページを開く</a>";
-            s += "<a href='" + localUrl + "' class='btn'>" + localUrl + "（状態ページ）</a>";
-            s += "<div id='copied' style='display:none;color:#166534;text-align:center;margin-top:8px'>コピーしました</div>";
-            // HTTP=非セキュアコンテキストでも動くよう execCommand フォールバック
-            s += "<script>function copyUrl(){var i=document.getElementById('mapurl');i.select();i.setSelectionRange(0,99999);";
-            s += "var ok=false;try{ok=document.execCommand('copy');}catch(e){}";
-            s += "if(navigator.clipboard){navigator.clipboard.writeText(i.value).then(function(){show();}).catch(function(){if(ok)show();});}else if(ok){show();}";
+            // 場所設定は本体URL（状態ページ）に集約。先にURLをコピーさせる。
+            s += "<div class='howto'>";
+            s += "<div class='howto-title'>📍 次に：場所の設定</div>";
+            s += "<ol>";
+            s += "<li>下の本体URLを<b>コピー</b>する</li>";
+            s += "<li>スマホを<b>自宅のWi-Fi</b>に接続し直す</li>";
+            s += "<li>コピーしたURLを開いて<b>場所を設定</b>する</li>";
+            s += "</ol>";
+            s += "<div class='urlrow'><span class='u' id='localurl'>" + localUrl + "</span>";
+            s += "<button type='button' class='btn-sm' onclick='copyUrl()'>📋 コピー</button></div>";
+            s += "<div id='copied' style='display:none;color:#166534;font-size:13px;margin:4px 0 0;'>コピーしました</div>";
+            s += "</div>";
+            s += "<a href='" + localUrl + "' class='btn' target='_blank' rel='noopener'>🔗 本体URLを開く</a>";
+            // テキスト表示(span)からコピー。HTTP=非セキュアコンテキストでも動くよう execCommand フォールバック。
+            s += "<script>function copyUrl(){var t=document.getElementById('localurl').textContent;";
+            s += "if(navigator.clipboard){navigator.clipboard.writeText(t).then(show).catch(function(){fb(t);});}else{fb(t);}";
+            s += "function fb(x){var ta=document.createElement('textarea');ta.value=x;ta.style.position='fixed';ta.style.opacity='0';";
+            s += "document.body.appendChild(ta);ta.select();try{document.execCommand('copy');show();}catch(e){}document.body.removeChild(ta);}";
             s += "function show(){document.getElementById('copied').style.display='block';}}</script>";
             webServer.send(200, "text/html", makePage("設定完了", s));
             delay(2000);
@@ -129,8 +155,8 @@ void startWebServer() {
 
         // 状態表示＋都道府県選択＋地図ページ導線
         webServer.on("/", []() {
-            String s = "<h1>☂️ " + String(APP_TITLE) + " 稼働中</h1>";
-            s += "<h2>✅ 接続中</h2>";
+            String s = "<h1>☂️ " + String(APP_TITLE) + "</h1>";
+            s += "<label style='display:block;margin-bottom:8px;font-weight:bold;color:#374151;'>✅ 稼働中</label>";
             s += "<div class='info'>";
             s += "本体名: <strong>" + g_mdnsHost + ".local</strong><br>";
             s += "WiFi: <strong>" + WiFi.SSID() + "</strong><br>";
@@ -145,15 +171,16 @@ void startWebServer() {
             s += "function tick(){document.getElementById('uptime').textContent=fmt(up);up++;}";
             s += "tick();setInterval(tick,1000);</script>";
 
-            // 都道府県から選ぶ（全47）
+            // 場所の設定（都道府県プリセット）
+            s += "<label style='display:block;margin-bottom:8px;font-weight:bold;color:#374151;'>📍 場所の設定</label>";
             s += "<form method='get' action='setpref'>";
             s += "<label style='display:block;margin-bottom:8px;font-weight:bold;color:#374151;'>都道府県から選ぶ:</label>";
             s += "<select name='pref' style='margin-bottom:12px;'>" + prefOptionsHtml() + "</select>";
             s += "<button type='submit' class='btn'>📍 この場所に設定</button></form>";
 
             // さらに細かく地図で（外部の地図ページへ）
-            String setupUrl = String(SETUP_PAGE_URL) + "?ip=" + WiFi.localIP().toString();
-            s += "<a href='" + setupUrl + "' class='btn'>🗺 地図で細かく指定する</a>";
+            String setupUrl = String(SETUP_PAGE_URL) + "?ip=" + g_mdnsHost + ".local";
+            s += "<a href='" + setupUrl + "' class='btn'>🗺 地図から指定する</a>";
 
             s += "<div class='info' style='font-size:13px;color:#6b7280;'>WiFi設定をやり直す場合は、本体ボタンを長押ししてください。</div>";
             webServer.send(200, "text/html", makePage("稼働中", s));
