@@ -80,7 +80,7 @@ enum ScreenMode {
 // ===== 天気チェック設定 =====
 #define UPDATE_INTERVAL 1800000  // 更新間隔: 30分 (ミリ秒)
 #define RAIN_THRESHOLD 40        // 降水確率のしきい値 (%)
-#define FORECAST_CHECK_HOURS 12  // 何時間先までの雨をチェックするか(3時間単位)。12=直近4枠
+#define FORECAST_CHECK_HOURS 12  // 雨の通知の既定値(時間)。実値は本体ページで1〜24hに変更可(Preferences:notify_hrs)
 #define FORECAST_DISPLAY_COUNT 6 // 予報画面に表示する行数
 
 // 天気取得リトライ

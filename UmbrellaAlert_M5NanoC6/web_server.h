@@ -182,6 +182,12 @@ void startWebServer() {
             String setupUrl = String(SETUP_PAGE_URL) + "?ip=" + g_mdnsHost + ".local";
             s += "<a href='" + setupUrl + "' class='btn'>🗺 地図から指定する</a>";
 
+            // 雨の通知（直近何時間先までの予報で判定するか）
+            s += "<label style='display:block;margin:18px 0 8px;font-weight:bold;color:#374151;'>🌧️ 雨の通知</label>";
+            s += "<form method='get' action='setnotify'>";
+            s += "<select name='hours' onchange=\"document.getElementById('nhBtn').disabled=(this.value=='" + String(getNotifyHours()) + "');\" style='margin-bottom:12px;'>" + notifyHoursOptionsHtml() + "</select>";
+            s += "<button type='submit' id='nhBtn' class='btn' disabled>💾 保存して再起動</button></form>";
+
             s += "<div class='info' style='font-size:13px;color:#6b7280;'>WiFi設定をやり直す場合は、本体ボタンを長押ししてください。</div>";
             webServer.send(200, "text/html", makePage("稼働中", s));
         });
@@ -193,6 +199,17 @@ void startWebServer() {
             s += "<div class='success'>「" + getLocationName() + "」に設定しました。<br>本体が再起動して反映します。</div>";
             webServer.sendHeader("Cache-Control", "no-store");
             webServer.send(200, "text/html", makePage("場所変更", s));
+            delay(500);
+            ESP.restart();
+        });
+
+        // 雨の通知（チェック時間）を変更 → 再起動で反映
+        webServer.on("/setnotify", []() {
+            if (webServer.hasArg("hours")) setNotifyHours(webServer.arg("hours").toInt());
+            String s = "<h1>✅ 雨の通知を変更しました</h1>";
+            s += "<div class='success'>直近 <strong>" + String(getNotifyHours()) + " 時間</strong>以内の雨予報で通知します。<br>本体が再起動して反映します。</div>";
+            webServer.sendHeader("Cache-Control", "no-store");
+            webServer.send(200, "text/html", makePage("通知設定", s));
             delay(500);
             ESP.restart();
         });

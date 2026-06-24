@@ -182,8 +182,26 @@ void startWebServer() {
             s += "信号強度: <strong>" + String(WiFi.RSSI()) + " dBm</strong><br>";
             s += "稼働時間: <strong>" + String(millis() / 1000) + " 秒</strong><br>";
             s += "</div>";
+
+            // 雨の通知（直近何時間先までの予報で判定するか）
+            s += "<label style='display:block;margin:18px 0 8px;font-weight:bold;color:#374151;'>🌧️ 雨の通知</label>";
+            s += "<form method='get' action='setnotify'>";
+            s += "<select name='hours' onchange=\"document.getElementById('nhBtn').disabled=(this.value=='" + String(getNotifyHours()) + "');\" style='margin-bottom:12px;'>" + notifyHoursOptionsHtml() + "</select>";
+            s += "<button type='submit' id='nhBtn' class='btn' disabled>💾 保存して再起動</button></form>";
+
             s += "<a href='/reset' class='btn btn-danger'>🔄 設定をリセット</a>";
             webServer.send(200, "text/html", makePage("稼働中", s));
+        });
+
+        // 雨の通知（チェック時間）を変更 → 再起動で反映
+        webServer.on("/setnotify", []() {
+            if (webServer.hasArg("hours")) setNotifyHours(webServer.arg("hours").toInt());
+            String s = "<h1>✅ 雨の通知を変更しました</h1>";
+            s += "<div class='success'>直近 <strong>" + String(getNotifyHours()) + " 時間</strong>以内の雨予報で通知します。<br>本体が再起動して反映します。</div>";
+            webServer.sendHeader("Cache-Control", "no-store");
+            webServer.send(200, "text/html", makePage("通知設定", s));
+            delay(500);
+            ESP.restart();
         });
         
         // 設定リセット処理

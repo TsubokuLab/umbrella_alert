@@ -263,10 +263,10 @@ bool checkWeatherForecast() {
         return false;
     }
 
-    // 直近 FORECAST_CHECK_HOURS（3時間刻み）の雨をチェック
+    // 直近 notifyHours（3時間刻みに切り上げ）の雨をチェック
     willRain = false;
     rainProbability = -1;
-    const int slots = FORECAST_CHECK_HOURS / 3;
+    const int slots = notifyForecastSlots();
     for (int i = 0; i < slots; i++) {
         String weatherMain = doc["list"][i]["weather"][0]["main"].as<String>();
         float pop = doc["list"][i]["pop"].as<float>() * 100;  // 降水確率(%)

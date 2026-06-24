@@ -682,8 +682,8 @@ bool checkWeatherForecast() {
                        ? customName
                        : doc["city"]["name"].as<String>();
 
-        // 予報は3時間刻みなので、チェック枠数 = チェック時間 / 3
-        const int forecastSlots = FORECAST_CHECK_HOURS / 3;
+        // 予報は3時間刻み。チェック枠数 = 通知時間(notifyHours)を3hに切り上げ
+        const int forecastSlots = notifyForecastSlots();
         for (int i = 0; i < forecastSlots; i++) {
             String weatherMain = doc["list"][i]["weather"][0]["main"].as<String>();
             float pop = doc["list"][i]["pop"].as<float>() * 100;  // 降水確率（%）

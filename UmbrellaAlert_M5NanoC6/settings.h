@@ -70,6 +70,9 @@ String customLon  = "";
 String customName = "";
 long   customTz   = DEFAULT_TIMEZONE_OFFSET;
 
+// 雨の通知: 直近何時間先までの予報で傘判定するか（1〜24h。既定はconfigのFORECAST_CHECK_HOURS）
+int    notifyHours = FORECAST_CHECK_HOURS;
+
 bool hasCustomLocation() { return customLat.length() > 0 && customLon.length() > 0; }
 
 // 設定のロード（未設定なら東京を既定に）
@@ -79,6 +82,8 @@ void loadSettings() {
     customLon  = preferences.getString("lon", "");
     customName = preferences.getString("loc_name", "");
     customTz   = preferences.getLong("tz_offset", DEFAULT_TIMEZONE_OFFSET);
+    notifyHours = preferences.getInt("notify_hrs", FORECAST_CHECK_HOURS);
+    if (notifyHours < 1 || notifyHours > 24) notifyHours = FORECAST_CHECK_HOURS;
     preferences.end();
     if (!hasCustomLocation()) {  // 初回など未設定 → 東京
         customLat = "35.690"; customLon = "139.692"; customName = "東京都"; customTz = DEFAULT_TIMEZONE_OFFSET;
@@ -103,6 +108,28 @@ void setCustomLocation(const String& lat, const String& lon, const String& name,
 void setPrefecture(int idx) {
     if (idx < 0 || idx >= PREF_COUNT) return;
     setCustomLocation(PREFS[idx].lat, PREFS[idx].lon, PREFS[idx].name, DEFAULT_TIMEZONE_OFFSET);
+}
+
+// ===== 雨の通知（チェック時間） =====
+int  getNotifyHours() { return notifyHours; }
+// 予報は3時間刻みなので、通知時間→チェック枠数（切り上げ・最低1枠）
+int  notifyForecastSlots() { int s = (notifyHours + 2) / 3; return s < 1 ? 1 : s; }
+void setNotifyHours(int h) {
+    if (h < 1) h = 1; if (h > 24) h = 24;
+    preferences.begin("weather_app", false);
+    preferences.putInt("notify_hrs", h);
+    preferences.end();
+    notifyHours = h;
+}
+// 設定ページの「雨の通知」ドロップダウン用 <option> 群（現在値をselected）
+String notifyHoursOptionsHtml() {
+    String s = "";
+    for (int h = 1; h <= 24; h++) {
+        s += "<option value='" + String(h) + "'";
+        if (h == notifyHours) s += " selected";
+        s += ">" + String(h) + " 時間</option>";
+    }
+    return s;
 }
 
 // 設定ページの都道府県ドロップダウン用 <option> 群（現在地と一致するものをselected）

@@ -40,7 +40,7 @@ enum DeviceMode {
 // ===== 天気チェック設定 =====
 #define UPDATE_INTERVAL 1800000  // 更新間隔: 30分 (ミリ秒)
 #define RAIN_THRESHOLD 40        // 降水確率のしきい値 (%)
-#define FORECAST_CHECK_HOURS 12  // 何時間先までの雨をチェックするか(3時間単位)
+#define FORECAST_CHECK_HOURS 12  // 雨の通知の既定値(時間)。実値は本体ページで1〜24hに変更可(Preferences:notify_hrs)
 #define WEATHER_MAX_RETRIES 3
 #define WEATHER_RETRY_DELAY 60000
 

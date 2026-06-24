@@ -51,6 +51,9 @@ String customLon  = "";
 String customName = "";
 long   customTz   = DEFAULT_TIMEZONE_OFFSET;
 
+// 雨の通知: 直近何時間先までの予報で傘判定するか（1〜24h。既定はconfigのFORECAST_CHECK_HOURS）
+int    notifyHours = FORECAST_CHECK_HOURS;
+
 // カスタム場所(緯度経度)が保存されているか（locModeに依らず、座標が存在するか）
 bool hasCustomLocation() {
     return customLat.length() > 0 && customLon.length() > 0;
@@ -106,8 +109,33 @@ void loadSettings() {
     // ビープ音量
     beepVolIndex = preferences.getInt("beep_idx", defaultBeepIndex());
     if (beepVolIndex < 0 || beepVolIndex >= BEEP_PRESET_COUNT) beepVolIndex = defaultBeepIndex();
+    // 雨の通知（チェック時間）
+    notifyHours = preferences.getInt("notify_hrs", FORECAST_CHECK_HOURS);
+    if (notifyHours < 1 || notifyHours > 24) notifyHours = FORECAST_CHECK_HOURS;
     preferences.end();
     nextSel = currentSelectionIndex();
+}
+
+// ===== 雨の通知（チェック時間） =====
+int  getNotifyHours() { return notifyHours; }
+// 予報は3時間刻みなので、通知時間→チェック枠数（切り上げ・最低1枠）
+int  notifyForecastSlots() { int s = (notifyHours + 2) / 3; return s < 1 ? 1 : s; }
+void setNotifyHours(int h) {
+    if (h < 1) h = 1; if (h > 24) h = 24;
+    preferences.begin("weather_app", false);
+    preferences.putInt("notify_hrs", h);
+    preferences.end();
+    notifyHours = h;
+}
+// 設定ページの「雨の通知」ドロップダウン用 <option> 群（現在値をselected）
+String notifyHoursOptionsHtml() {
+    String s = "";
+    for (int h = 1; h <= 24; h++) {
+        s += "<option value='" + String(h) + "'";
+        if (h == notifyHours) s += " selected";
+        s += ">" + String(h) + " 時間</option>";
+    }
+    return s;
 }
 
 // 設定の保存（都市インデックスと場所モード）
