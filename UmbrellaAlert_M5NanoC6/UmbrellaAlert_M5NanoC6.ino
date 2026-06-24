@@ -30,7 +30,7 @@ DynamicJsonDocument doc(16384);
 unsigned long lastUpdateTime = 0;
 
 // LED表示の状態
-enum LedState { LED_CONNECTING, LED_SETUP, LED_APP, LED_RESET_ARMING, LED_RESETTING };
+enum LedState { LED_CONNECTING, LED_SETUP, LED_APP, LED_RESET_ARMING, LED_RESETTING, LED_OFF };
 volatile int ledState = LED_CONNECTING;
 volatile unsigned long resetHeldMs = 0;  // ボタン長押しの経過時間（リセット進捗表示用）
 
@@ -113,8 +113,10 @@ void loop() {
     if (M5.BtnA.isPressed() && btnDown) {
         resetHeldMs = millis() - btnDown;
         if (resetHeldMs >= RESET_HOLD_MS) {
-            ledState = LED_RESETTING;   // 確定: 赤の点滅でフィードバック
-            delay(900);                 // フィードバックを見せる時間
+            ledState = LED_RESETTING;   // 確定: 赤を1秒点灯
+            delay(1000);
+            ledState = LED_OFF;         // 消灯してから再起動
+            delay(150);
             resetSettings();            // WiFi設定をクリアして再起動
         } else {
             ledState = LED_RESET_ARMING; // 押下中: 赤の進捗表示
@@ -139,33 +141,29 @@ void loop() {
 }
 
 // 内蔵RGB LED（インジケーター）を状態に応じて点灯
+// 原則: 点滅=操作待機 / 呼吸・点灯=正常
 void updateOnboard() {
     uint8_t r = 0, g = 0, b = 0;
     switch (ledState) {
-        case LED_SETUP: {  // シアン呼吸
-            float a = 0.3 + 0.7 * (0.5 + 0.5 * sin(millis() * 0.002));
-            g = 200 * a; b = 200 * a;
+        case LED_OFF:
+            break;
+        case LED_SETUP: {  // 未設定/AP待ち: 白の呼吸（やや速め）
+            float a = 0.25 + 0.75 * (0.5 + 0.5 * sin(millis() * 0.004));
+            r = 255 * a; g = 255 * a; b = 255 * a;
         } break;
-        case LED_CONNECTING: {  // 黄色点滅
-            if ((millis() / 250) % 2 == 0) { r = 255; g = 140; }
+        case LED_CONNECTING: {  // 接続中(待機): 白点滅
+            if ((millis() / 250) % 2 == 0) { r = 255; g = 255; b = 255; }
         } break;
-        case LED_RESET_ARMING: {  // 赤点滅。進捗が進むほど速く
-            float prog = (float)resetHeldMs / RESET_HOLD_MS;
-            if (prog > 1.0) prog = 1.0;
-            int period = 400 - (int)(prog * 320);
-            if (period < 60) period = 60;
-            if ((millis() / period) % 2 == 0) r = 255;
+        case LED_RESET_ARMING: {  // 長押し中(待機): 赤点滅 0.25秒
+            if ((millis() / 250) % 2 == 0) r = 255;
         } break;
-        case LED_RESETTING: {  // 赤の速い点滅
-            if ((millis() / 100) % 2 == 0) r = 255;
+        case LED_RESETTING: {  // 確定: 赤点灯
+            r = 255;
         } break;
-        default: {  // LED_APP
-            if (willRain) {  // 雨: 青点滅
-                if ((millis() / 500) % 2 == 0) b = 255;
-            } else {         // 晴れ: オレンジ呼吸
-                float a = 0.5 + 0.5 * (0.5 + 0.5 * sin(millis() * 0.0015));
-                r = 255 * a; g = 120 * a;
-            }
+        default: {  // LED_APP（正常）: 呼吸。雨=青 / 晴=オレンジ
+            float a = 0.25 + 0.75 * (0.5 + 0.5 * sin(millis() * 0.0015));
+            if (willRain) { b = 255 * a; }
+            else          { r = 255 * a; g = 120 * a; }
         } break;
     }
     onboard.setPixelColor(0, r, g, b);
@@ -176,17 +174,17 @@ void updateOnboard() {
 void updateLEDs() {
     const int brightness = 100;
 
-    if (ledState == LED_RESET_ARMING) {
-        // リセット長押し中: 赤の進捗バー（点灯数が増える）
-        float prog = (float)resetHeldMs / RESET_HOLD_MS;
-        if (prog > 1.0) prog = 1.0;
-        int lit = (int)ceil(prog * LED_COUNT);
-        for (int i = 0; i < LED_COUNT; i++) pixels.setPixelColor(i, (i < lit) ? 160 : 6, 0, 0);
+    if (ledState == LED_OFF) {
+        pixels.clear();
+
+    } else if (ledState == LED_RESET_ARMING) {
+        // リセット長押し中(待機): 赤点滅 0.25秒
+        bool on = (millis() / 250) % 2 == 0;
+        for (int i = 0; i < LED_COUNT; i++) pixels.setPixelColor(i, on ? 180 : 0, 0, 0);
 
     } else if (ledState == LED_RESETTING) {
-        // リセット確定: 赤の速い点滅
-        bool on = (millis() / 100) % 2 == 0;
-        for (int i = 0; i < LED_COUNT; i++) pixels.setPixelColor(i, on ? 200 : 0, 0, 0);
+        // リセット確定: 赤点灯
+        for (int i = 0; i < LED_COUNT; i++) pixels.setPixelColor(i, 200, 0, 0);
 
     } else if (ledState == LED_SETUP) {
         // 設定モード: シアンのゆっくり呼吸
