@@ -64,6 +64,8 @@ String generateCSS() {
     css += "}";
     css += ".btn:hover{transform:translateY(-2px);box-shadow:0 8px 25px rgba(0,0,0,0.15);}";
     css += ".btn:active{transform:translateY(1px);}";
+    css += ".btn:disabled{background:#cbd5e1;color:#f1f5f9;cursor:not-allowed;box-shadow:none;transform:none;}";
+    css += ".btn:disabled:hover{transform:none;box-shadow:none;}";
     css += ".btn.secondary{background:#fff;color:" + P1 + ";border:2px solid " + P0 + ";}";
     css += ".btn-danger{background:linear-gradient(135deg," + String(THEME_DANGER_START) + "," + String(THEME_DANGER_END) + ");}";
 
