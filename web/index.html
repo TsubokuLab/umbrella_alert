@@ -31,6 +31,17 @@
     border:1px solid rgba(102,126,234,0.25);border-radius:10px;
     padding:10px 12px;margin-bottom:14px;color:#1e40af;word-break:break-all;
   }
+  .device input{
+    border:1px solid #c7d2fe;border-radius:8px;padding:6px 8px;font-size:14px;
+    width:160px;max-width:55%;color:#1e3a8a;
+  }
+  .howto{
+    background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;
+    padding:8px 14px;margin-bottom:16px;font-size:14px;color:#374151;
+  }
+  .howto summary{cursor:pointer;font-weight:700;color:#4338ca;padding:4px 0;}
+  .howto ol{margin:8px 0;padding-left:20px;line-height:1.7;}
+  .howto-note{font-size:12px;color:#6b7280;margin-top:6px;}
   .map-wrap{position:relative;margin-bottom:12px;}
   #map{height:300px;border-radius:14px;border:1px solid #e5e7eb;}
   /* 中央のレティクル（常に地図中心＝選択地点） */
@@ -81,6 +92,16 @@
   <h1>☂️ 場所の設定</h1>
   <div class="sub">地図を動かして、知りたい場所を中央の照準に合わせてください</div>
 
+  <details class="howto">
+    <summary>はじめての設定（WiFi登録がまだの方）</summary>
+    <ol>
+      <li>スマホのWi-Fi設定で <b>Umbrella-Alert</b>（パスワード <b>12345678</b>）に接続</li>
+      <li>自動で開く設定画面で、ご自宅のWi-Fiを登録 → 本体が再起動します</li>
+      <li>スマホを<b>自宅のWi-Fi</b>に戻し、<b>このページを開き直して</b>下の地図で場所を設定</li>
+    </ol>
+    <div class="howto-note">※ 本体名は <b>umbrella.local</b> でアクセスします。うまくいかない場合は上の欄に本体のIPアドレスを入力してください。</div>
+  </details>
+
   <div class="map-wrap">
     <div id="map"></div>
     <div class="reticle" aria-hidden="true">
@@ -130,22 +151,18 @@
   // フッターの年（今年を自動表示）
   $("year").textContent = new Date().getFullYear();
 
-  // ---- 本体IP（?ip=192.168.x.x） ----
+  // ---- 送信先（?ip= 未指定なら mDNS の umbrella.local を既定に）----
+  // 常に編集可能な欄にして、mDNSが効かない端末では本体IPに変更できるようにする。
   const params = new URLSearchParams(location.search);
-  let deviceIp = params.get("ip") || "";
+  let deviceIp = (params.get("ip") || "umbrella.local").trim();
   (function renderDeviceInfo(){
-    if (deviceIp) {
-      $("deviceInfo").innerHTML = "送信先デバイス: <strong>" + deviceIp + "</strong>";
-    } else {
-      $("deviceInfo").innerHTML =
-        "⚠️ 本体IPがURLにありません。本体のQRから開き直すか、IPを手入力してください:" +
-        "<br><input type='text' id='ipManual' placeholder='192.168.x.x' " +
-        "style='margin-top:8px;width:100%;padding:10px;border:2px solid #e2e8f0;border-radius:10px;font-size:16px'>";
-      setTimeout(() => {
-        const m = $("ipManual");
-        if (m) m.addEventListener("input", e => { deviceIp = e.target.value.trim(); });
-      }, 0);
-    }
+    $("deviceInfo").innerHTML =
+      "送信先デバイス: <input type='text' id='ipEdit' value='" + deviceIp + "' " +
+      "placeholder='umbrella.local または 192.168.x.x'>";
+    setTimeout(() => {
+      const m = $("ipEdit");
+      if (m) m.addEventListener("input", e => { deviceIp = e.target.value.trim(); });
+    }, 0);
   })();
 
   // ---- 地図（中心がレティクル＝選択地点） ----
