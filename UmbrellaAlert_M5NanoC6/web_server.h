@@ -164,6 +164,8 @@ void startWebServer() {
             s += "IP: <strong>" + WiFi.localIP().toString() + "</strong><br>";
             s += "現在の場所: <strong>" + getLocationName() + "</strong><br>";
             s += "稼働: <strong id='uptime'>-</strong>";
+            // WiFiやり直し案内（稼働中の枠に合体）
+            s += "<div style='margin-top:10px;padding-top:10px;border-top:1px solid rgba(102,126,234,0.2);font-size:13px;color:#6b7280;'>WiFi設定をやり直す場合は、本体ボタンを長押ししてください。</div>";
             s += "</div>";
             // 稼働秒数を起点に、JS側で毎秒リアルタイムにカウントアップ表示
             s += "<script>var up=" + String(millis() / 1000) + ";";
@@ -171,9 +173,6 @@ void startWebServer() {
             s += "var r='';if(d)r+=d+'日';if(d||h)r+=h+'時間';if(d||h||m)r+=m+'分';r+=s+'秒';return r;}";
             s += "function tick(){document.getElementById('uptime').textContent=fmt(up);up++;}";
             s += "tick();setInterval(tick,1000);</script>";
-
-            // WiFiやり直し案内（稼働中セクションの末尾）
-            s += "<div class='info' style='font-size:13px;color:#6b7280;'>WiFi設定をやり直す場合は、本体ボタンを長押ししてください。</div>";
 
             // 場所の設定（都道府県プリセット）
             s += "<label style='display:block;margin-bottom:8px;font-weight:bold;color:#374151;'>📍 場所の設定</label>";
