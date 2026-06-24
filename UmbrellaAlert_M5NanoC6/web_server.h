@@ -100,7 +100,7 @@ void startWebServer() {
 
             String localUrl = "http://" + g_mdnsHost + ".local";                       // 個体の状態ページ
             String mapUrl   = String(SETUP_PAGE_URL) + "?ip=" + g_mdnsHost + ".local";   // 個体の地図設定ページ
-            String s = "<h1>✅ WiFi設定を保存</h1>";
+            String s = "<h1>✅ WiFi設定完了</h1>";
             s += "<div class='success'>この本体（<strong>" + g_mdnsHost + ".local</strong>）が再起動して接続します。</div>";
             s += "<div class='info'>📍 <strong>次に：場所の設定</strong><br>";
             s += "1. スマホを<strong>自宅のWi-Fi</strong>に接続し直す<br>";
@@ -129,14 +129,21 @@ void startWebServer() {
 
         // 状態表示＋都道府県選択＋地図ページ導線
         webServer.on("/", []() {
-            String s = "<h1>✅ 接続中</h1>";
+            String s = "<h1>☂️ " + String(APP_TITLE) + " 稼働中</h1>";
+            s += "<h2>✅ 接続中</h2>";
             s += "<div class='info'>";
             s += "本体名: <strong>" + g_mdnsHost + ".local</strong><br>";
             s += "WiFi: <strong>" + WiFi.SSID() + "</strong><br>";
             s += "IP: <strong>" + WiFi.localIP().toString() + "</strong><br>";
             s += "現在の場所: <strong>" + getLocationName() + "</strong><br>";
-            s += "稼働: <strong>" + String(millis() / 1000) + " 秒</strong>";
+            s += "稼働: <strong id='uptime'>-</strong>";
             s += "</div>";
+            // 稼働秒数を起点に、JS側で毎秒リアルタイムにカウントアップ表示
+            s += "<script>var up=" + String(millis() / 1000) + ";";
+            s += "function fmt(t){var d=Math.floor(t/86400),h=Math.floor(t%86400/3600),m=Math.floor(t%3600/60),s=t%60;";
+            s += "var r='';if(d)r+=d+'日';if(d||h)r+=h+'時間';if(d||h||m)r+=m+'分';r+=s+'秒';return r;}";
+            s += "function tick(){document.getElementById('uptime').textContent=fmt(up);up++;}";
+            s += "tick();setInterval(tick,1000);</script>";
 
             // 都道府県から選ぶ（全47）
             s += "<form method='get' action='setpref'>";
@@ -148,7 +155,7 @@ void startWebServer() {
             String setupUrl = String(SETUP_PAGE_URL) + "?ip=" + WiFi.localIP().toString();
             s += "<a href='" + setupUrl + "' class='btn'>🗺 地図で細かく指定する</a>";
 
-            s += "<a href='/reset' class='btn btn-danger'>🔄 WiFi設定をリセット</a>";
+            s += "<div class='info' style='font-size:13px;color:#6b7280;'>WiFi設定をやり直す場合は、本体ボタンを長押ししてください。</div>";
             webServer.send(200, "text/html", makePage("稼働中", s));
         });
 
