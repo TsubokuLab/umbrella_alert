@@ -57,7 +57,15 @@ String generateCSS() {
     css += "font-weight:bold;";
     css += "}";
 
-    // ボタンスタイル
+    // 見出し（H2）
+    css += "h2{";
+    css += "text-align:center;";
+    css += "color:#4a5568;";
+    css += "margin-top:0;";
+    css += "margin-bottom:20px;";
+    css += "font-size:18px;";
+    css += "font-weight:bold;";
+    css += "}";
     css += ".btn{";
     css += "width:100%;";
     css += "padding:" + String(BUTTON_PADDING) + " 0px;";
