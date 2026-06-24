@@ -132,12 +132,25 @@ String notifyHoursOptionsHtml() {
     return s;
 }
 
-// 設定ページの都道府県ドロップダウン用 <option> 群（現在地と一致するものをselected）
+// 現在地が都道府県プリセットと一致するindex（無ければ-1）
+int currentPrefIndex() {
+    for (int i = 0; i < PREF_COUNT; i++) if (customName == PREFS[i].name) return i;
+    return -1;
+}
+// 現在地が地図でのカスタム指定か（プリセット名のどれとも一致しない）
+bool isCustomPlace() { return hasCustomLocation() && currentPrefIndex() < 0; }
+// 都道府県ドロップダウンの「現在値」(JSの初期値比較用)。カスタム時は "-1"
+String currentPrefValue() { return isCustomPlace() ? String("-1") : String(currentPrefIndex()); }
+
+// 設定ページの都道府県ドロップダウン用 <option> 群
+// カスタム指定中は先頭に「カスタム」を出して選択状態にする
 String prefOptionsHtml() {
     String s = "";
+    if (isCustomPlace()) s += "<option value='-1' selected>カスタム（地図設定）</option>";
+    int cur = currentPrefIndex();
     for (int i = 0; i < PREF_COUNT; i++) {
         s += "<option value='" + String(i) + "'";
-        if (customName == PREFS[i].name) s += " selected";
+        if (i == cur) s += " selected";
         s += ">" + String(PREFS[i].name) + "</option>";
     }
     return s;

@@ -175,8 +175,8 @@ void startWebServer() {
             s += "<label style='display:block;margin-bottom:8px;font-weight:bold;color:#374151;'>📍 場所の設定</label>";
             s += "<form method='get' action='setpref'>";
             s += "<label style='display:block;margin-bottom:8px;font-weight:bold;color:#374151;'>都道府県から選ぶ:</label>";
-            s += "<select name='pref' style='margin-bottom:12px;'>" + prefOptionsHtml() + "</select>";
-            s += "<button type='submit' class='btn'>📍 この場所に設定</button></form>";
+            s += "<select name='pref' onchange=\"document.getElementById('prefBtn').disabled=(this.value=='" + currentPrefValue() + "');\" style='margin-bottom:12px;'>" + prefOptionsHtml() + "</select>";
+            s += "<button type='submit' id='prefBtn' class='btn' disabled>📍 この場所に設定</button></form>";
 
             // さらに細かく地図で（外部の地図ページへ）
             String setupUrl = String(SETUP_PAGE_URL) + "?ip=" + g_mdnsHost + ".local";
@@ -185,7 +185,10 @@ void startWebServer() {
             // 雨の通知（直近何時間先までの予報で判定するか）
             s += "<label style='display:block;margin:18px 0 8px;font-weight:bold;color:#374151;'>🌧️ 雨の通知</label>";
             s += "<form method='get' action='setnotify'>";
-            s += "<select name='hours' onchange=\"document.getElementById('nhBtn').disabled=(this.value=='" + String(getNotifyHours()) + "');\" style='margin-bottom:12px;'>" + notifyHoursOptionsHtml() + "</select>";
+            s += "<div style='display:flex;align-items:center;gap:8px;margin-bottom:12px;'>";
+            s += "<select name='hours' onchange=\"document.getElementById('nhBtn').disabled=(this.value=='" + String(getNotifyHours()) + "');\" style='width:auto;flex:none;margin:0;'>" + notifyHoursOptionsHtml() + "</select>";
+            s += "<span style='font-size:14px;color:#374151;'>以内の雨予報を通知する</span>";
+            s += "</div>";
             s += "<button type='submit' id='nhBtn' class='btn' disabled>💾 保存して再起動</button></form>";
 
             s += "<div class='info' style='font-size:13px;color:#6b7280;'>WiFi設定をやり直す場合は、本体ボタンを長押ししてください。</div>";
