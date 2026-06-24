@@ -46,15 +46,7 @@ enum DeviceMode {
 
 // タイムゾーン（カスタム未設定時のフォールバック）
 #define DEFAULT_TIMEZONE_OFFSET (9 * 3600)
-
-// ===== 都市設定 =====
-#define CITY_AUTO "auto"
-#define CITY_SAPPORO "2128295"   // 札幌
-#define CITY_TOKYO "1850147"     // 東京
-#define CITY_OSAKA "1853909"     // 大阪
-#define CITY_FUKUOKA "1863967"   // 福岡
-#define CITY_NAHA "1856035"      // 那覇
-#define DEFAULT_CITY_ID CITY_TOKYO
+// ※場所は settings.h の都道府県プリセット(代表座標) or 地図のカスタム緯度経度で指定する
 
 // ===== ハードウェア設定（NeoPixel LED）=====
 #define LED_USE_GROVE_PIN 1      // 1: GroveのSDAピンを自動使用 / 0: LED_PINを使用

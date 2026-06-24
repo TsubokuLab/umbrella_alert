@@ -1,8 +1,8 @@
 /*
 *******************************************************************************
 * web_server.h - Webサーバー機能（画面なし版）
-*  設定モード: WiFi＋都市の設定ページ
-*  通常モード : 状態表示／都市変更／カスタム場所保存(/save)／リセット
+*  設定モード: 1画面のWiFi設定（キャプティブポータルが直接これを開く）
+*  通常モード : 状態表示／都道府県選択／地図ページ導線／リセット
 *******************************************************************************
 */
 
@@ -43,6 +43,25 @@ String urlDecode(String input) {
     return s;
 }
 
+// 設定モードのWiFi設定ページ（1画面）。キャプティブポータルが直接これを表示する。
+String wifiSetupHtml() {
+    String s = "<h1>☂️ " + String(APP_TITLE) + "</h1>";
+    s += "<div class='info'>接続するWi-Fiを選んでパスワードを入力してください</div>";
+    s += "<form method='get' action='setap'>";
+    s += "<div style='display:flex;align-items:center;gap:10px;margin-bottom:8px;'>";
+    s += "<label style='font-weight:bold;color:#374151;flex:1;'>ネットワークを選択:</label>";
+    s += "<button type='button' onclick='refreshNetworks()' class='btn' style='width:auto;padding:8px 16px;margin:0;font-size:14px;'>🔄 更新</button>";
+    s += "</div>";
+    s += "<select id='networkSelect' name='ssid' style='margin-bottom:20px;'>" + ssidList + "</select>";
+    s += "<label style='display:block;margin-bottom:8px;font-weight:bold;color:#374151;'>パスワード:</label>";
+    s += "<input name='pass' type='password' placeholder='ネットワークパスワードを入力' maxlength='64'>";
+    s += "<button type='submit' class='btn'>🔗 接続設定を保存</button></form>";
+    s += "<script>function refreshNetworks(){var btn=event.target;btn.innerHTML='更新中...';btn.disabled=true;";
+    s += "fetch('/refresh-networks').then(r=>r.json()).then(d=>{document.getElementById('networkSelect').innerHTML=d.networks;btn.innerHTML='🔄 更新';btn.disabled=false;})";
+    s += ".catch(e=>{btn.innerHTML='🔄 更新';btn.disabled=false;alert('更新に失敗しました');});}</script>";
+    return makePage("WiFi設定", s);
+}
+
 // Webサーバー開始（モードに応じたルート設定）
 void startWebServer() {
     if (deviceMode == SETUP_MODE) {
@@ -51,27 +70,9 @@ void startWebServer() {
         Serial.println(WiFi.softAPIP());
         dnsServer.start(DNS_SERVER_PORT, "*", WiFi.softAPIP());
 
-        // WiFi＋都市の設定ページ
-        webServer.on("/settings", []() {
-            String s = "<h1>📶 WiFi設定</h1>";
-            s += "<div class='info'>接続するWiFiとパスワード、表示したい地域を選んでください</div>";
-            s += "<form method='get' action='setap'>";
-            s += "<div style='display:flex;align-items:center;gap:10px;margin-bottom:8px;'>";
-            s += "<label style='font-weight:bold;color:#374151;flex:1;'>ネットワークを選択:</label>";
-            s += "<button type='button' onclick='refreshNetworks()' class='btn' style='width:auto;padding:8px 16px;margin:0;font-size:14px;'>🔄 更新</button>";
-            s += "</div>";
-            s += "<select id='networkSelect' name='ssid' style='margin-bottom:20px;'>" + ssidList + "</select>";
-            s += "<label style='display:block;margin-bottom:8px;font-weight:bold;color:#374151;'>パスワード:</label>";
-            s += "<input name='pass' type='password' placeholder='ネットワークパスワードを入力' maxlength='64'>";
-            s += "<div class='info'>場所（地域）は接続後に地図ページから設定します</div>";
-            s += "<button type='submit' class='btn'>🔗 接続設定を保存</button></form>";
-
-            s += "<script>function refreshNetworks(){var btn=event.target;btn.innerHTML='更新中...';btn.disabled=true;";
-            s += "fetch('/refresh-networks').then(r=>r.json()).then(d=>{document.getElementById('networkSelect').innerHTML=d.networks;btn.innerHTML='🔄 更新';btn.disabled=false;})";
-            s += ".catch(e=>{btn.innerHTML='🔄 更新';btn.disabled=false;alert('更新に失敗しました');});}</script>";
-
-            webServer.send(200, "text/html", makePage("WiFi設定", s));
-        });
+        // キャプティブポータルは未知のURLを叩くので onNotFound で直接WiFi設定画面を出す（1画面）
+        webServer.onNotFound([]() { webServer.send(200, "text/html", wifiSetupHtml()); });
+        webServer.on("/settings", []() { webServer.send(200, "text/html", wifiSetupHtml()); });
 
         // ネットワーク再スキャン（Ajax）
         webServer.on("/refresh-networks", []() {
@@ -83,7 +84,7 @@ void startWebServer() {
                            "{\"networks\":\"" + escaped + "\",\"count\":" + String(networkCount) + "}");
         });
 
-        // WiFi設定保存 → 再起動（場所は接続後に地図ページで設定）
+        // WiFi設定保存 → 再起動（場所は接続後に設定）
         webServer.on("/setap", []() {
             String ssid = urlDecode(webServer.arg("ssid"));
             String pass = urlDecode(webServer.arg("pass"));
@@ -97,24 +98,14 @@ void startWebServer() {
             String localUrl = "http://" + String(DNS_DOMAIN) + ".local";
             String s = "<h1>✅ WiFi設定を保存</h1>";
             s += "<div class='success'>本体が再起動して接続します。</div>";
-            s += "<div class='info'>📍 <strong>次に：場所（地図）の設定</strong><br>";
+            s += "<div class='info'>📍 <strong>次に：場所の設定</strong><br>";
             s += "1. スマホを<strong>自宅のWi-Fi</strong>に接続し直す<br>";
             s += "2. <strong>" + localUrl + "</strong> を開く<br>";
-            s += "3. 「🗺 地図でカスタム地点を設定」から場所を指定</div>";
+            s += "3. 都道府県を選ぶ／地図で場所を指定</div>";
             s += "<a href='" + localUrl + "' class='btn'>" + localUrl + " を開く</a>";
             webServer.send(200, "text/html", makePage("設定完了", s));
             delay(2000);
             ESP.restart();
-        });
-
-        // キャプティブポータル
-        webServer.onNotFound([]() {
-            String s = "<h1>☂️ " + String(APP_TITLE) + "</h1>";
-            s += "<div class='info'>WiFi接続設定を開始します。<br>";
-            s += "アクセスポイント名: <strong>" + String(AP_SSID) + "</strong><br>";
-            s += "設定用IP: <strong>" + WiFi.softAPIP().toString() + "</strong></div>";
-            s += "<a href='/settings' class='btn'>⚙️ 設定を開始</a>";
-            webServer.send(200, "text/html", makePage("セットアップ", s));
         });
 
     } else {
@@ -122,7 +113,7 @@ void startWebServer() {
         Serial.print("Webサーバー開始: ");
         Serial.println(WiFi.localIP());
 
-        // 状態表示＋地域変更＋場所設定ページへの導線
+        // 状態表示＋都道府県選択＋地図ページ導線
         webServer.on("/", []() {
             String s = "<h1>✅ 接続中</h1>";
             s += "<div class='info'>";
@@ -132,27 +123,27 @@ void startWebServer() {
             s += "稼働: <strong>" + String(millis() / 1000) + " 秒</strong>";
             s += "</div>";
 
-            // 地域（プリセット）変更
-            s += "<form method='get' action='setcity'>";
-            s += "<label style='display:block;margin-bottom:8px;font-weight:bold;color:#374151;'>地域を選ぶ:</label>";
-            s += "<select name='city' style='margin-bottom:12px;'>" + cityOptionsHtml() + "</select>";
-            s += "<button type='submit' class='btn'>📍 この地域に設定</button></form>";
+            // 都道府県から選ぶ（全47）
+            s += "<form method='get' action='setpref'>";
+            s += "<label style='display:block;margin-bottom:8px;font-weight:bold;color:#374151;'>都道府県から選ぶ:</label>";
+            s += "<select name='pref' style='margin-bottom:12px;'>" + prefOptionsHtml() + "</select>";
+            s += "<button type='submit' class='btn'>📍 この場所に設定</button></form>";
 
-            // カスタム緯度経度（外部の地図ページへ）
+            // さらに細かく地図で（外部の地図ページへ）
             String setupUrl = String(SETUP_PAGE_URL) + "?ip=" + WiFi.localIP().toString();
-            s += "<a href='" + setupUrl + "' class='btn'>🗺 地図でカスタム地点を設定</a>";
+            s += "<a href='" + setupUrl + "' class='btn'>🗺 地図で細かく指定する</a>";
 
             s += "<a href='/reset' class='btn btn-danger'>🔄 WiFi設定をリセット</a>";
             webServer.send(200, "text/html", makePage("稼働中", s));
         });
 
-        // 地域（プリセット都市）変更 → 再起動で反映
-        webServer.on("/setcity", []() {
-            if (webServer.hasArg("city")) setCityByIndex(webServer.arg("city").toInt());
-            String s = "<h1>✅ 地域を変更しました</h1>";
-            s += "<div class='success'>本体が再起動して反映します。</div>";
+        // 都道府県を選択 → 再起動で反映
+        webServer.on("/setpref", []() {
+            if (webServer.hasArg("pref")) setPrefecture(webServer.arg("pref").toInt());
+            String s = "<h1>✅ 場所を変更しました</h1>";
+            s += "<div class='success'>「" + getLocationName() + "」に設定しました。<br>本体が再起動して反映します。</div>";
             webServer.sendHeader("Cache-Control", "no-store");
-            webServer.send(200, "text/html", makePage("地域変更", s));
+            webServer.send(200, "text/html", makePage("場所変更", s));
             delay(500);
             ESP.restart();
         });

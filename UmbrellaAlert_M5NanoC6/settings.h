@@ -1,4 +1,5 @@
-// settings.h - 場所設定（都市プリセット / カスタム緯度経度）。画面なし版。
+// settings.h - 場所設定（画面なし版）
+// 場所はすべて緯度経度(lat/lon)で扱う。都道府県プリセット or 地図でのカスタム指定。
 
 #ifndef SETTINGS_H
 #define SETTINGS_H
@@ -10,100 +11,107 @@
 // 設定保存用（このTUで一度だけ定義。他ヘッダは extern で参照）
 Preferences preferences;
 
-// ===== 都市プリセット =====
-enum CityIndex {
-    INDEX_SAPPORO,
-    INDEX_TOKYO,
-    INDEX_OSAKA,
-    INDEX_FUKUOKA,
-    INDEX_NAHA,
-    CITY_COUNT
+// ===== 都道府県プリセット（代表＝県庁所在地の座標）=====
+struct Pref { const char* name; const char* lat; const char* lon; };
+const Pref PREFS[] = {
+    {"北海道",   "43.064", "141.347"},
+    {"青森県",   "40.824", "140.740"},
+    {"岩手県",   "39.704", "141.153"},
+    {"宮城県",   "38.269", "140.872"},
+    {"秋田県",   "39.719", "140.102"},
+    {"山形県",   "38.240", "140.364"},
+    {"福島県",   "37.750", "140.468"},
+    {"茨城県",   "36.342", "140.447"},
+    {"栃木県",   "36.566", "139.884"},
+    {"群馬県",   "36.391", "139.061"},
+    {"埼玉県",   "35.857", "139.649"},
+    {"千葉県",   "35.605", "140.123"},
+    {"東京都",   "35.690", "139.692"},
+    {"神奈川県", "35.448", "139.643"},
+    {"新潟県",   "37.902", "139.023"},
+    {"富山県",   "36.695", "137.211"},
+    {"石川県",   "36.595", "136.626"},
+    {"福井県",   "36.065", "136.222"},
+    {"山梨県",   "35.664", "138.568"},
+    {"長野県",   "36.651", "138.181"},
+    {"岐阜県",   "35.391", "136.722"},
+    {"静岡県",   "34.977", "138.383"},
+    {"愛知県",   "35.180", "136.907"},
+    {"三重県",   "34.730", "136.509"},
+    {"滋賀県",   "35.005", "135.869"},
+    {"京都府",   "35.021", "135.756"},
+    {"大阪府",   "34.694", "135.502"},
+    {"兵庫県",   "34.691", "135.183"},
+    {"奈良県",   "34.685", "135.833"},
+    {"和歌山県", "34.226", "135.168"},
+    {"鳥取県",   "35.504", "134.238"},
+    {"島根県",   "35.472", "133.051"},
+    {"岡山県",   "34.662", "133.935"},
+    {"広島県",   "34.385", "132.455"},
+    {"山口県",   "34.186", "131.471"},
+    {"徳島県",   "34.066", "134.559"},
+    {"香川県",   "34.340", "134.043"},
+    {"愛媛県",   "33.842", "132.766"},
+    {"高知県",   "33.560", "133.531"},
+    {"福岡県",   "33.607", "130.418"},
+    {"佐賀県",   "33.249", "130.299"},
+    {"長崎県",   "32.745", "129.874"},
+    {"熊本県",   "32.790", "130.742"},
+    {"大分県",   "33.238", "131.613"},
+    {"宮崎県",   "31.911", "131.424"},
+    {"鹿児島県", "31.560", "130.558"},
+    {"沖縄県",   "26.212", "127.681"}
 };
+const int PREF_COUNT = sizeof(PREFS) / sizeof(PREFS[0]);
 
-struct CityInfo {
-    const char* id;    // OpenWeatherMap ID
-    const char* name;  // 表示名
-    long tzOffset;     // タイムゾーン補正(秒)
-};
-
-const CityInfo CITIES[CITY_COUNT] = {
-    {CITY_SAPPORO, "札幌", 9 * 3600},
-    {CITY_TOKYO,   "東京", 9 * 3600},
-    {CITY_OSAKA,   "大阪", 9 * 3600},
-    {CITY_FUKUOKA, "福岡", 9 * 3600},
-    {CITY_NAHA,    "那覇", 9 * 3600}
-};
-
-// ===== 場所モード（PRESET / CUSTOM）=====
-int    currentCityIndex = INDEX_TOKYO;
-int    locMode    = 0;   // 0=PRESET, 1=CUSTOM
+// ===== 現在の場所（lat/lon/name/tz）。未設定時は東京を既定に =====
 String customLat  = "";
 String customLon  = "";
 String customName = "";
 long   customTz   = DEFAULT_TIMEZONE_OFFSET;
 
 bool hasCustomLocation() { return customLat.length() > 0 && customLon.length() > 0; }
-bool isCustomLocation()  { return locMode == 1 && hasCustomLocation(); }
 
-// 設定のロード
+// 設定のロード（未設定なら東京を既定に）
 void loadSettings() {
     preferences.begin("weather_app", false);
-    currentCityIndex = preferences.getInt("city_index", INDEX_TOKYO);
-    if (currentCityIndex < 0 || currentCityIndex >= CITY_COUNT) currentCityIndex = INDEX_TOKYO;
-    locMode    = preferences.getInt("loc_mode", 0);
     customLat  = preferences.getString("lat", "");
     customLon  = preferences.getString("lon", "");
     customName = preferences.getString("loc_name", "");
     customTz   = preferences.getLong("tz_offset", DEFAULT_TIMEZONE_OFFSET);
     preferences.end();
+    if (!hasCustomLocation()) {  // 初回など未設定 → 東京
+        customLat = "35.690"; customLon = "139.692"; customName = "東京都"; customTz = DEFAULT_TIMEZONE_OFFSET;
+    }
 }
 
-// 都市インデックスとモードを保存
-void saveSettings() {
-    preferences.begin("weather_app", false);
-    preferences.putInt("city_index", currentCityIndex);
-    preferences.putInt("loc_mode", locMode);
-    preferences.end();
-}
+long   getCurrentTimezoneOffset() { return customTz; }
+String getLocationName() { return customName.length() > 0 ? customName : String("東京都"); }
 
-const char* getCurrentCityId() { return CITIES[currentCityIndex].id; }
-long getCurrentTimezoneOffset() {
-    return isCustomLocation() ? customTz : CITIES[currentCityIndex].tzOffset;
-}
-
-// 表示用の場所名（カスタムは入力名、なければ都市名）
-String getLocationName() {
-    if (isCustomLocation() && customName.length() > 0) return customName;
-    return String(CITIES[currentCityIndex].name);
-}
-
-// プリセット都市を確定（Web /setcity から呼ぶ）。カスタム座標は消さない。
-void setCityByIndex(int idx) {
-    if (idx < 0 || idx >= CITY_COUNT) return;
-    currentCityIndex = idx;
-    locMode = 0;
-    saveSettings();
-}
-
-// カスタム場所を保存（Web /save から呼ぶ）
+// 場所を保存（地図ページの /save、都道府県選択の両方から使う）
 void setCustomLocation(const String& lat, const String& lon, const String& name, long tz) {
     preferences.begin("weather_app", false);
-    preferences.putInt("loc_mode", 1);
     preferences.putString("lat", lat);
     preferences.putString("lon", lon);
     preferences.putString("loc_name", name);
     preferences.putLong("tz_offset", tz);
     preferences.end();
-    locMode = 1; customLat = lat; customLon = lon; customName = name; customTz = tz;
+    customLat = lat; customLon = lon; customName = name; customTz = tz;
 }
 
-// 設定ページの都市ドロップダウン用 <option> 群（現在選択中をselected）
-String cityOptionsHtml() {
+// 都道府県を選択（その県庁所在地の座標で保存）
+void setPrefecture(int idx) {
+    if (idx < 0 || idx >= PREF_COUNT) return;
+    setCustomLocation(PREFS[idx].lat, PREFS[idx].lon, PREFS[idx].name, DEFAULT_TIMEZONE_OFFSET);
+}
+
+// 設定ページの都道府県ドロップダウン用 <option> 群（現在地と一致するものをselected）
+String prefOptionsHtml() {
     String s = "";
-    for (int i = 0; i < CITY_COUNT; i++) {
+    for (int i = 0; i < PREF_COUNT; i++) {
         s += "<option value='" + String(i) + "'";
-        if (!isCustomLocation() && i == currentCityIndex) s += " selected";
-        s += ">" + String(CITIES[i].name) + "</option>";
+        if (customName == PREFS[i].name) s += " selected";
+        s += ">" + String(PREFS[i].name) + "</option>";
     }
     return s;
 }

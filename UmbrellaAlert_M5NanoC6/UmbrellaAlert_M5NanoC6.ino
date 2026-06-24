@@ -236,14 +236,9 @@ bool checkWeatherForecast() {
     if (WiFi.status() != WL_CONNECTED) return false;
 
     HTTPClient http;
-    String url;
     const String common = "&units=" + String(UNITS) + "&lang=" + String(LANGUAGE) + "&appid=" + String(API_KEY);
-
-    if (isCustomLocation()) {
-        url = "http://api.openweathermap.org/data/2.5/forecast?lat=" + customLat + "&lon=" + customLon + common;
-    } else {
-        url = "http://api.openweathermap.org/data/2.5/forecast?id=" + String(getCurrentCityId()) + common;
-    }
+    // 場所は常に緯度経度で指定（都道府県プリセットも地図も lat/lon に統一）
+    String url = "http://api.openweathermap.org/data/2.5/forecast?lat=" + customLat + "&lon=" + customLon + common;
 
     Serial.println("OpenWeatherMapに接続 : " + url);
     http.begin(url);
