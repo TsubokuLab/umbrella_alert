@@ -63,8 +63,7 @@ void startWebServer() {
             s += "<select id='networkSelect' name='ssid' style='margin-bottom:20px;'>" + ssidList + "</select>";
             s += "<label style='display:block;margin-bottom:8px;font-weight:bold;color:#374151;'>パスワード:</label>";
             s += "<input name='pass' type='password' placeholder='ネットワークパスワードを入力' maxlength='64'>";
-            s += "<label style='display:block;margin-bottom:8px;font-weight:bold;color:#374151;'>地域:</label>";
-            s += "<select name='city' style='margin-bottom:20px;'>" + cityOptionsHtml() + "</select>";
+            s += "<div class='info'>場所（地域）は接続後に地図ページから設定します</div>";
             s += "<button type='submit' class='btn'>🔗 接続設定を保存</button></form>";
 
             s += "<script>function refreshNetworks(){var btn=event.target;btn.innerHTML='更新中...';btn.disabled=true;";
@@ -84,21 +83,25 @@ void startWebServer() {
                            "{\"networks\":\"" + escaped + "\",\"count\":" + String(networkCount) + "}");
         });
 
-        // 設定保存（WiFi＋都市）→ 再起動
+        // WiFi設定保存 → 再起動（場所は接続後に地図ページで設定）
         webServer.on("/setap", []() {
             String ssid = urlDecode(webServer.arg("ssid"));
             String pass = urlDecode(webServer.arg("pass"));
-            Serial.printf("SSID: %s / 地域index: %s\n", ssid.c_str(), webServer.arg("city").c_str());
+            Serial.printf("SSID: %s\n", ssid.c_str());
 
             preferences.begin("wifi-config", false);
             preferences.putString("WIFI_SSID", ssid);
             preferences.putString("WIFI_PASSWD", pass);
             preferences.end();
 
-            if (webServer.hasArg("city")) setCityByIndex(webServer.arg("city").toInt());
-
-            String s = "<h1>✅ 設定完了</h1>";
-            s += "<div class='success'>設定を保存しました。<br>本体が再起動して接続を開始します。</div>";
+            String localUrl = "http://" + String(DNS_DOMAIN) + ".local";
+            String s = "<h1>✅ WiFi設定を保存</h1>";
+            s += "<div class='success'>本体が再起動して接続します。</div>";
+            s += "<div class='info'>📍 <strong>次に：場所（地図）の設定</strong><br>";
+            s += "1. スマホを<strong>自宅のWi-Fi</strong>に接続し直す<br>";
+            s += "2. <strong>" + localUrl + "</strong> を開く<br>";
+            s += "3. 「🗺 地図でカスタム地点を設定」から場所を指定</div>";
+            s += "<a href='" + localUrl + "' class='btn'>" + localUrl + " を開く</a>";
             webServer.send(200, "text/html", makePage("設定完了", s));
             delay(2000);
             ESP.restart();
@@ -106,7 +109,7 @@ void startWebServer() {
 
         // キャプティブポータル
         webServer.onNotFound([]() {
-            String s = "<h1>📱 " + String(APP_TITLE) + "</h1>";
+            String s = "<h1>☂️ " + String(APP_TITLE) + "</h1>";
             s += "<div class='info'>WiFi接続設定を開始します。<br>";
             s += "アクセスポイント名: <strong>" + String(AP_SSID) + "</strong><br>";
             s += "設定用IP: <strong>" + WiFi.softAPIP().toString() + "</strong></div>";
