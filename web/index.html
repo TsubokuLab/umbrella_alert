@@ -235,15 +235,11 @@
   $("sendBtn").addEventListener("click", () => {
     if (!deviceIp) { showStatus("err", "本体IPが未指定です"); return; }
     const url = buildSaveUrl();
-    // HTTPSページからの fetch/img 等の背景送信は Mixed Content でブロックされる。
-    // このページは遷移させず、別タブで本体の /save を開く（トップレベル遷移は許可される）。
-    // /save は保存後に本体の状態ページ(/)へリダイレクトするので、別タブが本体ページになる。
-    const w = window.open(url, "_blank");
-    if (!w) {  // ポップアップがブロックされた場合は現在タブで遷移にフォールバック
-      window.location.href = url;
-      return;
-    }
-    showStatus("ok", "本体へ送信しました。開いたタブに本体ページが表示されます。");
+    // HTTPSページからHTTP機器へのトップレベル遷移は許可される（Mixed Contentはサブリソースの話）。
+    // 同一タブで本体の /save に遷移 → /save は保存後に本体ページ(/)へリダイレクトするので、
+    // このタブがそのまま本体ページに戻る。
+    showStatus("ok", "本体へ送信中…本体ページに戻ります。");
+    window.location.href = url;
   });
 
   function showStatus(type, msg){

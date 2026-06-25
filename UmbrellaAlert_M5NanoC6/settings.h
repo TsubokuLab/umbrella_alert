@@ -64,16 +64,26 @@ const Pref PREFS[] = {
 };
 const int PREF_COUNT = sizeof(PREFS) / sizeof(PREFS[0]);
 
-// ===== 現在の場所（lat/lon/name/tz）。未設定時は東京を既定に =====
+// ===== 現在アクティブな場所（lat/lon/name/tz）。未設定時は東京を既定に =====
 String customLat  = "";
 String customLon  = "";
 String customName = "";
 long   customTz   = DEFAULT_TIMEZONE_OFFSET;
 
+// ===== カスタム場所スロット（地図で指定した場所を都道府県選択とは別に保持）=====
+// 都道府県に切り替えてもこのスロットは消さず、「カスタム」を選べば復元できる。
+String custSlotLat  = "";
+String custSlotLon  = "";
+String custSlotName = "";
+long   custSlotTz   = DEFAULT_TIMEZONE_OFFSET;
+
 // 雨の通知: 直近何時間先までの予報で傘判定するか（1〜24h。既定はconfigのFORECAST_CHECK_HOURS）
 int    notifyHours = FORECAST_CHECK_HOURS;
 
 bool hasCustomLocation() { return customLat.length() > 0 && customLon.length() > 0; }
+bool hasCustomSlot()     { return custSlotLat.length() > 0 && custSlotLon.length() > 0; }
+// 現在のアクティブ場所がカスタムスロットと一致しているか
+bool isCustomActive()    { return hasCustomSlot() && customLat == custSlotLat && customLon == custSlotLon; }
 
 // 設定のロード（未設定なら東京を既定に）
 void loadSettings() {
@@ -82,6 +92,10 @@ void loadSettings() {
     customLon  = preferences.getString("lon", "");
     customName = preferences.getString("loc_name", "");
     customTz   = preferences.getLong("tz_offset", DEFAULT_TIMEZONE_OFFSET);
+    custSlotLat  = preferences.getString("cust_lat", "");
+    custSlotLon  = preferences.getString("cust_lon", "");
+    custSlotName = preferences.getString("cust_name", "");
+    custSlotTz   = preferences.getLong("cust_tz", DEFAULT_TIMEZONE_OFFSET);
     notifyHours = preferences.getInt("notify_hrs", FORECAST_CHECK_HOURS);
     if (notifyHours < 1 || notifyHours > 24) notifyHours = FORECAST_CHECK_HOURS;
     preferences.end();
@@ -93,8 +107,8 @@ void loadSettings() {
 long   getCurrentTimezoneOffset() { return customTz; }
 String getLocationName() { return customName.length() > 0 ? customName : String("東京都"); }
 
-// 場所を保存（地図ページの /save、都道府県選択の両方から使う）
-void setCustomLocation(const String& lat, const String& lon, const String& name, long tz) {
+// アクティブな場所を保存（内部用。都道府県/カスタム復元の共通処理）
+void setActiveLocation(const String& lat, const String& lon, const String& name, long tz) {
     preferences.begin("weather_app", false);
     preferences.putString("lat", lat);
     preferences.putString("lon", lon);
@@ -104,10 +118,28 @@ void setCustomLocation(const String& lat, const String& lon, const String& name,
     customLat = lat; customLon = lon; customName = name; customTz = tz;
 }
 
-// 都道府県を選択（その県庁所在地の座標で保存）
+// カスタム場所を保存（地図ページの /save から）。アクティブ＋カスタムスロットの両方に保存。
+void setCustomLocation(const String& lat, const String& lon, const String& name, long tz) {
+    preferences.begin("weather_app", false);
+    preferences.putString("cust_lat", lat);
+    preferences.putString("cust_lon", lon);
+    preferences.putString("cust_name", name);
+    preferences.putLong("cust_tz", tz);
+    preferences.end();
+    custSlotLat = lat; custSlotLon = lon; custSlotName = name; custSlotTz = tz;
+    setActiveLocation(lat, lon, name, tz);
+}
+
+// 保存済みカスタムスロットをアクティブに復元（プルダウンで「カスタム」を選んだとき）
+void applyCustomSlot() {
+    if (!hasCustomSlot()) return;
+    setActiveLocation(custSlotLat, custSlotLon, custSlotName, custSlotTz);
+}
+
+// 都道府県を選択（県庁所在地の座標をアクティブに。カスタムスロットは残す）
 void setPrefecture(int idx) {
     if (idx < 0 || idx >= PREF_COUNT) return;
-    setCustomLocation(PREFS[idx].lat, PREFS[idx].lon, PREFS[idx].name, DEFAULT_TIMEZONE_OFFSET);
+    setActiveLocation(PREFS[idx].lat, PREFS[idx].lon, PREFS[idx].name, DEFAULT_TIMEZONE_OFFSET);
 }
 
 // ===== 雨の通知（チェック時間） =====
@@ -132,21 +164,25 @@ String notifyHoursOptionsHtml() {
     return s;
 }
 
-// 現在地が都道府県プリセットと一致するindex（無ければ-1）
+// 現在のアクティブ場所が都道府県プリセットと一致するindex（カスタム/無一致は-1）
 int currentPrefIndex() {
+    if (isCustomActive()) return -1;
     for (int i = 0; i < PREF_COUNT; i++) if (customName == PREFS[i].name) return i;
     return -1;
 }
-// 現在地が地図でのカスタム指定か（プリセット名のどれとも一致しない）
-bool isCustomPlace() { return hasCustomLocation() && currentPrefIndex() < 0; }
 // 都道府県ドロップダウンの「現在値」(JSの初期値比較用)。カスタム時は "-1"
-String currentPrefValue() { return isCustomPlace() ? String("-1") : String(currentPrefIndex()); }
+String currentPrefValue() { return isCustomActive() ? String("-1") : String(currentPrefIndex()); }
 
 // 設定ページの都道府県ドロップダウン用 <option> 群
-// カスタム指定中は先頭に「カスタム」を出して選択状態にする
+// カスタムスロットが存在すれば先頭に「カスタム（地名）」を出す（都道府県へ切替後も選べる＝復元用）
 String prefOptionsHtml() {
     String s = "";
-    if (isCustomPlace()) s += "<option value='-1' selected>カスタム（地図設定）</option>";
+    if (hasCustomSlot()) {
+        String cn = custSlotName.length() > 0 ? custSlotName : String("地図設定");
+        s += "<option value='-1'";
+        if (isCustomActive()) s += " selected";
+        s += ">カスタム（" + cn + "）</option>";
+    }
     int cur = currentPrefIndex();
     for (int i = 0; i < PREF_COUNT; i++) {
         s += "<option value='" + String(i) + "'";

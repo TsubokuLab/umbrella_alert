@@ -184,7 +184,7 @@ void startWebServer() {
 
             // さらに細かく地図で（外部の地図ページ＝別タブで開く）
             String setupUrl = String(SETUP_PAGE_URL) + "?ip=" + g_mdnsHost + ".local";
-            s += "<a href='" + setupUrl + "' class='btn secondary' target='_blank' rel='noopener'>🗺 地図から指定する <span style='font-size:13px;opacity:.8;'>↗ 別タブ</span></a>";
+            s += "<a href='" + setupUrl + "' class='btn secondary'>🗺 地図から指定する</a>";
 
             // 雨の通知（直近何時間先までの予報で判定するか）。保存はAjaxでページ遷移なし。
             s += "<label style='display:block;margin:18px 0 8px;font-weight:bold;color:#374151;'>🌧️ 雨の通知</label>";
@@ -212,7 +212,11 @@ void startWebServer() {
 
         // 都道府県を選択 → 再起動せずに反映（その場で天気を再取得）。ajax=1ならテキストのみ返す。
         webServer.on("/setpref", []() {
-            if (webServer.hasArg("pref")) setPrefecture(webServer.arg("pref").toInt());
+            if (webServer.hasArg("pref")) {
+                int idx = webServer.arg("pref").toInt();
+                if (idx < 0) applyCustomSlot();      // -1 = 保存済みカスタムに戻す
+                else         setPrefecture(idx);
+            }
             webServer.sendHeader("Cache-Control", "no-store");
             if (webServer.hasArg("ajax")) {
                 webServer.send(200, "text/plain", getLocationName());  // 新しい場所名を返す（JS側で現在地表示を更新）
