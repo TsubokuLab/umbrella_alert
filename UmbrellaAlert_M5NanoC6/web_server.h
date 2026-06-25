@@ -159,10 +159,10 @@ void startWebServer() {
             String s = "<h1>☂️ " + String(APP_TITLE) + "</h1>";
             s += "<label style='display:block;margin-bottom:8px;font-weight:bold;color:#374151;'>✅ 稼働中</label>";
             s += "<div class='info'>";
-            s += "本体名: <strong>" + g_mdnsHost + ".local</strong><br>";
+            s += "本体名: <a href='http://" + g_mdnsHost + ".local' style='color:#1d4ed8;word-break:break-all;'><strong>http://" + g_mdnsHost + ".local</strong></a><br>";
             s += "WiFi: <strong>" + WiFi.SSID() + "</strong><br>";
             s += "IP: <strong>" + WiFi.localIP().toString() + "</strong><br>";
-            s += "現在の場所: <strong>" + getLocationName() + "</strong><br>";
+            s += "現在の場所: <strong id='placeNow'>" + getLocationName() + "</strong><br>";
             s += "稼働: <strong id='uptime'>-</strong>";
             // WiFiやり直し案内（稼働中の枠に合体）
             s += "<div style='margin-top:10px;padding-top:10px;border-top:1px solid rgba(102,126,234,0.2);font-size:13px;color:#6b7280;'>WiFi設定をやり直す場合は、本体ボタンを長押ししてください。</div>";
@@ -177,12 +177,14 @@ void startWebServer() {
             // 場所の設定（都道府県プリセット）。保存はAjaxでページ遷移なし。
             s += "<label style='display:block;margin-bottom:8px;font-weight:bold;color:#374151;'>📍 場所の設定</label>";
             s += "<label style='display:block;margin-bottom:8px;font-weight:bold;color:#374151;'>都道府県から選ぶ:</label>";
-            s += "<select id='prefSel' onchange='onPrefChange()' style='margin-bottom:12px;'>" + prefOptionsHtml() + "</select>";
-            s += "<button type='button' id='prefBtn' class='btn' disabled onclick='savePref()'>📍 この場所に設定</button>";
+            s += "<div style='display:flex;align-items:center;gap:8px;margin-bottom:12px;'>";
+            s += "<select id='prefSel' onchange='onPrefChange()' style='flex:1;min-width:0;margin:0;'>" + prefOptionsHtml() + "</select>";
+            s += "<button type='button' id='prefBtn' class='btn' disabled onclick='savePref()' style='width:auto;flex:none;margin:0;'>📍 場所を保存</button>";
+            s += "</div>";
 
-            // さらに細かく地図で（外部の地図ページへ）
+            // さらに細かく地図で（外部の地図ページ＝別タブで開く）
             String setupUrl = String(SETUP_PAGE_URL) + "?ip=" + g_mdnsHost + ".local";
-            s += "<a href='" + setupUrl + "' class='btn'>🗺 地図から指定する</a>";
+            s += "<a href='" + setupUrl + "' class='btn secondary' target='_blank' rel='noopener'>🗺 地図から指定する <span style='font-size:13px;opacity:.8;'>↗ 別タブ</span></a>";
 
             // 雨の通知（直近何時間先までの予報で判定するか）。保存はAjaxでページ遷移なし。
             s += "<label style='display:block;margin:18px 0 8px;font-weight:bold;color:#374151;'>🌧️ 雨の通知</label>";
@@ -190,9 +192,9 @@ void startWebServer() {
             s += "<select id='nhSel' onchange='onNhChange()' style='width:auto;flex:none;margin:0;'>" + notifyHoursOptionsHtml() + "</select>";
             s += "<span style='font-size:14px;color:#374151;'>以内の雨予報を通知する</span>";
             s += "</div>";
-            s += "<button type='button' id='nhBtn' class='btn' disabled onclick='saveNh()'>💾 保存して反映</button>";
+            s += "<button type='button' id='nhBtn' class='btn' disabled onclick='saveNh()'>💾 変更を保存</button>";
 
-            // トースト＋Ajax保存スクリプト（成功でボタンを再びグレーアウト）
+            // トースト＋Ajax保存スクリプト（成功でボタンを再びグレーアウト＋現在地表示も更新）
             s += "<div id='toast' class='toast'></div>";
             s += "<script>";
             s += "var prefBase='" + currentPrefValue() + "',nhBase='" + String(getNotifyHours()) + "';";
@@ -200,9 +202,9 @@ void startWebServer() {
             s += "function onNhChange(){document.getElementById('nhBtn').disabled=(document.getElementById('nhSel').value==nhBase);}";
             s += "var _tt;function toast(m,e){var t=document.getElementById('toast');t.textContent=m;t.className='toast show'+(e?' err':'');clearTimeout(_tt);_tt=setTimeout(function(){t.className='toast'+(e?' err':'');},2600);}";
             s += "function savePref(){var sel=document.getElementById('prefSel'),btn=document.getElementById('prefBtn'),v=sel.value;btn.disabled=true;btn.textContent='保存中...';";
-            s += "fetch('/setpref?ajax=1&pref='+encodeURIComponent(v)).then(function(r){if(!r.ok)throw 0;}).then(function(){prefBase=v;btn.textContent='📍 この場所に設定';toast('📍 場所を更新しました');}).catch(function(){btn.disabled=false;btn.textContent='📍 この場所に設定';toast('保存に失敗しました',1);});}";
+            s += "fetch('/setpref?ajax=1&pref='+encodeURIComponent(v)).then(function(r){if(!r.ok)throw 0;return r.text();}).then(function(name){prefBase=v;btn.textContent='📍 場所を保存';if(name){document.getElementById('placeNow').textContent=name;}toast('📍 場所を「'+name+'」に更新しました');}).catch(function(){btn.disabled=false;btn.textContent='📍 場所を保存';toast('保存に失敗しました',1);});}";
             s += "function saveNh(){var sel=document.getElementById('nhSel'),btn=document.getElementById('nhBtn'),v=sel.value;btn.disabled=true;btn.textContent='保存中...';";
-            s += "fetch('/setnotify?ajax=1&hours='+encodeURIComponent(v)).then(function(r){if(!r.ok)throw 0;}).then(function(){nhBase=v;btn.textContent='💾 保存して反映';toast('🌧️ 雨の通知を更新しました');}).catch(function(){btn.disabled=false;btn.textContent='💾 保存して反映';toast('保存に失敗しました',1);});}";
+            s += "fetch('/setnotify?ajax=1&hours='+encodeURIComponent(v)).then(function(r){if(!r.ok)throw 0;}).then(function(){nhBase=v;btn.textContent='💾 変更を保存';toast('🌧️ 雨の通知を更新しました');}).catch(function(){btn.disabled=false;btn.textContent='💾 変更を保存';toast('保存に失敗しました',1);});}";
             s += "</script>";
 
             webServer.send(200, "text/html", makePage("稼働中", s));
@@ -213,7 +215,7 @@ void startWebServer() {
             if (webServer.hasArg("pref")) setPrefecture(webServer.arg("pref").toInt());
             webServer.sendHeader("Cache-Control", "no-store");
             if (webServer.hasArg("ajax")) {
-                webServer.send(200, "text/plain", "ok");
+                webServer.send(200, "text/plain", getLocationName());  // 新しい場所名を返す（JS側で現在地表示を更新）
             } else {
                 String s = "<h1>✅ 場所を変更しました</h1>";
                 s += "<div class='success'>「" + getLocationName() + "」に設定しました。新しい場所で天気を取得しました。</div>";

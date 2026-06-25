@@ -177,7 +177,7 @@ void startWebServer() {
             String s = "<h1>☂️ " + String(APP_TITLE) + "</h1>";
             s += "<label style='display:block;margin-bottom:8px;font-weight:bold;color:#374151;'>✅ 稼働中</label>";
             s += "<div class='info'>";
-            s += "本体名: <strong>" + g_mdnsHost + ".local</strong><br>";
+            s += "本体名: <a href='http://" + g_mdnsHost + ".local' style='color:#1d4ed8;word-break:break-all;'><strong>http://" + g_mdnsHost + ".local</strong></a><br>";
             s += "WiFiネットワーク: <strong>" + WiFi.SSID() + "</strong><br>";
             s += "IPアドレス: <strong>" + WiFi.localIP().toString() + "</strong><br>";
             s += "信号強度: <strong>" + String(WiFi.RSSI()) + " dBm</strong><br>";
@@ -190,7 +190,7 @@ void startWebServer() {
             s += "<select id='nhSel' onchange='onNhChange()' style='width:auto;flex:none;margin:0;'>" + notifyHoursOptionsHtml() + "</select>";
             s += "<span style='font-size:14px;color:#374151;'>以内の雨予報を通知する</span>";
             s += "</div>";
-            s += "<button type='button' id='nhBtn' class='btn' disabled onclick='saveNh()'>💾 保存して反映</button>";
+            s += "<button type='button' id='nhBtn' class='btn' disabled onclick='saveNh()'>💾 変更を保存</button>";
 
             s += "<a href='/reset' class='btn btn-danger'>🔄 設定をリセット</a>";
 
@@ -201,7 +201,7 @@ void startWebServer() {
             s += "function onNhChange(){document.getElementById('nhBtn').disabled=(document.getElementById('nhSel').value==nhBase);}";
             s += "var _tt;function toast(m,e){var t=document.getElementById('toast');t.textContent=m;t.className='toast show'+(e?' err':'');clearTimeout(_tt);_tt=setTimeout(function(){t.className='toast'+(e?' err':'');},2600);}";
             s += "function saveNh(){var sel=document.getElementById('nhSel'),btn=document.getElementById('nhBtn'),v=sel.value;btn.disabled=true;btn.textContent='保存中...';";
-            s += "fetch('/setnotify?ajax=1&hours='+encodeURIComponent(v)).then(function(r){if(!r.ok)throw 0;}).then(function(){nhBase=v;btn.textContent='💾 保存して反映';toast('🌧️ 雨の通知を更新しました');}).catch(function(){btn.disabled=false;btn.textContent='💾 保存して反映';toast('保存に失敗しました',1);});}";
+            s += "fetch('/setnotify?ajax=1&hours='+encodeURIComponent(v)).then(function(r){if(!r.ok)throw 0;}).then(function(){nhBase=v;btn.textContent='💾 変更を保存';toast('🌧️ 雨の通知を更新しました');}).catch(function(){btn.disabled=false;btn.textContent='💾 変更を保存';toast('保存に失敗しました',1);});}";
             s += "</script>";
 
             webServer.send(200, "text/html", makePage("稼働中", s));
