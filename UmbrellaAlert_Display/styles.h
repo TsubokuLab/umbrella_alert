@@ -110,6 +110,14 @@ String generateCSS() {
     css += "border-top:1px solid #e2e8f0;color:#9ca3af;font-size:12px;}";
     css += ".footer a{color:" + P1 + ";text-decoration:none;}";
 
+    // トースト通知（保存成功などを画面下に短時間表示）
+    css += ".toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);";
+    css += "background:#1f2937;color:#fff;padding:12px 18px;border-radius:10px;font-size:14px;";
+    css += "box-shadow:0 8px 25px rgba(0,0,0,0.25);opacity:0;pointer-events:none;";
+    css += "transition:opacity .25s,transform .25s;z-index:1000;max-width:90%;text-align:center;}";
+    css += ".toast.show{opacity:1;transform:translateX(-50%) translateY(0);}";
+    css += ".toast.err{background:#991b1b;}";
+
     // レスポンシブ
     css += "@media (max-width:600px){.container{padding:20px;}h1{font-size:20px;}}";
 

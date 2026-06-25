@@ -174,48 +174,67 @@ void startWebServer() {
             s += "function tick(){document.getElementById('uptime').textContent=fmt(up);up++;}";
             s += "tick();setInterval(tick,1000);</script>";
 
-            // 場所の設定（都道府県プリセット）
+            // 場所の設定（都道府県プリセット）。保存はAjaxでページ遷移なし。
             s += "<label style='display:block;margin-bottom:8px;font-weight:bold;color:#374151;'>📍 場所の設定</label>";
-            s += "<form method='get' action='setpref'>";
             s += "<label style='display:block;margin-bottom:8px;font-weight:bold;color:#374151;'>都道府県から選ぶ:</label>";
-            s += "<select name='pref' onchange=\"document.getElementById('prefBtn').disabled=(this.value=='" + currentPrefValue() + "');\" style='margin-bottom:12px;'>" + prefOptionsHtml() + "</select>";
-            s += "<button type='submit' id='prefBtn' class='btn' disabled>📍 この場所に設定</button></form>";
+            s += "<select id='prefSel' onchange='onPrefChange()' style='margin-bottom:12px;'>" + prefOptionsHtml() + "</select>";
+            s += "<button type='button' id='prefBtn' class='btn' disabled onclick='savePref()'>📍 この場所に設定</button>";
 
             // さらに細かく地図で（外部の地図ページへ）
             String setupUrl = String(SETUP_PAGE_URL) + "?ip=" + g_mdnsHost + ".local";
             s += "<a href='" + setupUrl + "' class='btn'>🗺 地図から指定する</a>";
 
-            // 雨の通知（直近何時間先までの予報で判定するか）
+            // 雨の通知（直近何時間先までの予報で判定するか）。保存はAjaxでページ遷移なし。
             s += "<label style='display:block;margin:18px 0 8px;font-weight:bold;color:#374151;'>🌧️ 雨の通知</label>";
-            s += "<form method='get' action='setnotify'>";
             s += "<div style='display:flex;align-items:center;gap:8px;margin-bottom:12px;'>";
-            s += "<select name='hours' onchange=\"document.getElementById('nhBtn').disabled=(this.value=='" + String(getNotifyHours()) + "');\" style='width:auto;flex:none;margin:0;'>" + notifyHoursOptionsHtml() + "</select>";
+            s += "<select id='nhSel' onchange='onNhChange()' style='width:auto;flex:none;margin:0;'>" + notifyHoursOptionsHtml() + "</select>";
             s += "<span style='font-size:14px;color:#374151;'>以内の雨予報を通知する</span>";
             s += "</div>";
-            s += "<button type='submit' id='nhBtn' class='btn' disabled>💾 保存して反映</button></form>";
+            s += "<button type='button' id='nhBtn' class='btn' disabled onclick='saveNh()'>💾 保存して反映</button>";
+
+            // トースト＋Ajax保存スクリプト（成功でボタンを再びグレーアウト）
+            s += "<div id='toast' class='toast'></div>";
+            s += "<script>";
+            s += "var prefBase='" + currentPrefValue() + "',nhBase='" + String(getNotifyHours()) + "';";
+            s += "function onPrefChange(){document.getElementById('prefBtn').disabled=(document.getElementById('prefSel').value==prefBase);}";
+            s += "function onNhChange(){document.getElementById('nhBtn').disabled=(document.getElementById('nhSel').value==nhBase);}";
+            s += "var _tt;function toast(m,e){var t=document.getElementById('toast');t.textContent=m;t.className='toast show'+(e?' err':'');clearTimeout(_tt);_tt=setTimeout(function(){t.className='toast'+(e?' err':'');},2600);}";
+            s += "function savePref(){var sel=document.getElementById('prefSel'),btn=document.getElementById('prefBtn'),v=sel.value;btn.disabled=true;btn.textContent='保存中...';";
+            s += "fetch('/setpref?ajax=1&pref='+encodeURIComponent(v)).then(function(r){if(!r.ok)throw 0;}).then(function(){prefBase=v;btn.textContent='📍 この場所に設定';toast('📍 場所を更新しました');}).catch(function(){btn.disabled=false;btn.textContent='📍 この場所に設定';toast('保存に失敗しました',1);});}";
+            s += "function saveNh(){var sel=document.getElementById('nhSel'),btn=document.getElementById('nhBtn'),v=sel.value;btn.disabled=true;btn.textContent='保存中...';";
+            s += "fetch('/setnotify?ajax=1&hours='+encodeURIComponent(v)).then(function(r){if(!r.ok)throw 0;}).then(function(){nhBase=v;btn.textContent='💾 保存して反映';toast('🌧️ 雨の通知を更新しました');}).catch(function(){btn.disabled=false;btn.textContent='💾 保存して反映';toast('保存に失敗しました',1);});}";
+            s += "</script>";
 
             webServer.send(200, "text/html", makePage("稼働中", s));
         });
 
-        // 都道府県を選択 → 再起動せずに反映（その場で天気を再取得）
+        // 都道府県を選択 → 再起動せずに反映（その場で天気を再取得）。ajax=1ならテキストのみ返す。
         webServer.on("/setpref", []() {
             if (webServer.hasArg("pref")) setPrefecture(webServer.arg("pref").toInt());
-            String s = "<h1>✅ 場所を変更しました</h1>";
-            s += "<div class='success'>「" + getLocationName() + "」に設定しました。新しい場所で天気を取得しました。</div>";
-            s += "<a href='/' class='btn'>← 設定ページに戻る</a>";
             webServer.sendHeader("Cache-Control", "no-store");
-            webServer.send(200, "text/html", makePage("場所変更", s));
+            if (webServer.hasArg("ajax")) {
+                webServer.send(200, "text/plain", "ok");
+            } else {
+                String s = "<h1>✅ 場所を変更しました</h1>";
+                s += "<div class='success'>「" + getLocationName() + "」に設定しました。新しい場所で天気を取得しました。</div>";
+                s += "<a href='/' class='btn'>← 設定ページに戻る</a>";
+                webServer.send(200, "text/html", makePage("場所変更", s));
+            }
             reloadWeatherApi();  // 再起動せずに即時反映
         });
 
-        // 雨の通知（チェック時間）を変更 → 再起動せずに反映
+        // 雨の通知（チェック時間）を変更 → 再起動せずに反映。ajax=1ならテキストのみ返す。
         webServer.on("/setnotify", []() {
             if (webServer.hasArg("hours")) setNotifyHours(webServer.arg("hours").toInt());
-            String s = "<h1>✅ 雨の通知を変更しました</h1>";
-            s += "<div class='success'>直近 <strong>" + String(getNotifyHours()) + " 時間</strong>以内の雨予報で通知します。</div>";
-            s += "<a href='/' class='btn'>← 設定ページに戻る</a>";
             webServer.sendHeader("Cache-Control", "no-store");
-            webServer.send(200, "text/html", makePage("通知設定", s));
+            if (webServer.hasArg("ajax")) {
+                webServer.send(200, "text/plain", "ok");
+            } else {
+                String s = "<h1>✅ 雨の通知を変更しました</h1>";
+                s += "<div class='success'>直近 <strong>" + String(getNotifyHours()) + " 時間</strong>以内の雨予報で通知します。</div>";
+                s += "<a href='/' class='btn'>← 設定ページに戻る</a>";
+                webServer.send(200, "text/html", makePage("通知設定", s));
+            }
             reloadWeatherApi();  // 再起動せずに即時反映
         });
 

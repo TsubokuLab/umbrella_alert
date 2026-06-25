@@ -184,27 +184,41 @@ void startWebServer() {
             s += "稼働時間: <strong>" + String(millis() / 1000) + " 秒</strong><br>";
             s += "</div>";
 
-            // 雨の通知（直近何時間先までの予報で判定するか）
+            // 雨の通知（直近何時間先までの予報で判定するか）。保存はAjaxでページ遷移なし。
             s += "<label style='display:block;margin:18px 0 8px;font-weight:bold;color:#374151;'>🌧️ 雨の通知</label>";
-            s += "<form method='get' action='setnotify'>";
             s += "<div style='display:flex;align-items:center;gap:8px;margin-bottom:12px;'>";
-            s += "<select name='hours' onchange=\"document.getElementById('nhBtn').disabled=(this.value=='" + String(getNotifyHours()) + "');\" style='width:auto;flex:none;margin:0;'>" + notifyHoursOptionsHtml() + "</select>";
+            s += "<select id='nhSel' onchange='onNhChange()' style='width:auto;flex:none;margin:0;'>" + notifyHoursOptionsHtml() + "</select>";
             s += "<span style='font-size:14px;color:#374151;'>以内の雨予報を通知する</span>";
             s += "</div>";
-            s += "<button type='submit' id='nhBtn' class='btn' disabled>💾 保存して反映</button></form>";
+            s += "<button type='button' id='nhBtn' class='btn' disabled onclick='saveNh()'>💾 保存して反映</button>";
 
             s += "<a href='/reset' class='btn btn-danger'>🔄 設定をリセット</a>";
+
+            // トースト＋Ajax保存スクリプト（成功でボタンを再びグレーアウト）
+            s += "<div id='toast' class='toast'></div>";
+            s += "<script>";
+            s += "var nhBase='" + String(getNotifyHours()) + "';";
+            s += "function onNhChange(){document.getElementById('nhBtn').disabled=(document.getElementById('nhSel').value==nhBase);}";
+            s += "var _tt;function toast(m,e){var t=document.getElementById('toast');t.textContent=m;t.className='toast show'+(e?' err':'');clearTimeout(_tt);_tt=setTimeout(function(){t.className='toast'+(e?' err':'');},2600);}";
+            s += "function saveNh(){var sel=document.getElementById('nhSel'),btn=document.getElementById('nhBtn'),v=sel.value;btn.disabled=true;btn.textContent='保存中...';";
+            s += "fetch('/setnotify?ajax=1&hours='+encodeURIComponent(v)).then(function(r){if(!r.ok)throw 0;}).then(function(){nhBase=v;btn.textContent='💾 保存して反映';toast('🌧️ 雨の通知を更新しました');}).catch(function(){btn.disabled=false;btn.textContent='💾 保存して反映';toast('保存に失敗しました',1);});}";
+            s += "</script>";
+
             webServer.send(200, "text/html", makePage("稼働中", s));
         });
 
-        // 雨の通知（チェック時間）を変更 → 再起動せずに反映
+        // 雨の通知（チェック時間）を変更 → 再起動せずに反映。ajax=1ならテキストのみ返す。
         webServer.on("/setnotify", []() {
             if (webServer.hasArg("hours")) setNotifyHours(webServer.arg("hours").toInt());
-            String s = "<h1>✅ 雨の通知を変更しました</h1>";
-            s += "<div class='success'>直近 <strong>" + String(getNotifyHours()) + " 時間</strong>以内の雨予報で通知します。</div>";
-            s += "<a href='/' class='btn'>← 設定ページに戻る</a>";
             webServer.sendHeader("Cache-Control", "no-store");
-            webServer.send(200, "text/html", makePage("通知設定", s));
+            if (webServer.hasArg("ajax")) {
+                webServer.send(200, "text/plain", "ok");
+            } else {
+                String s = "<h1>✅ 雨の通知を変更しました</h1>";
+                s += "<div class='success'>直近 <strong>" + String(getNotifyHours()) + " 時間</strong>以内の雨予報で通知します。</div>";
+                s += "<a href='/' class='btn'>← 設定ページに戻る</a>";
+                webServer.send(200, "text/html", makePage("通知設定", s));
+            }
             reloadWeatherApi();  // 再起動せずに即時反映
         });
         
