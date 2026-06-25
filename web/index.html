@@ -34,8 +34,8 @@
   }
   .device .label{flex:none;}
   .device .val{
-    flex:1;min-width:0;font-size:13px;color:#1e3a8a;font-weight:600;
-    overflow:hidden;text-overflow:ellipsis;
+    flex:1;min-width:0;font-size:13px;color:#1d4ed8;font-weight:600;
+    text-decoration:underline;overflow:hidden;text-overflow:ellipsis;
   }
   .howto{
     background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;
@@ -160,7 +160,8 @@
   let deviceIp = (params.get("ip") || "umbrella-alert.local").trim();
   (function renderDeviceInfo(){
     $("deviceInfo").innerHTML =
-      "<span class='label'>送信先デバイス:</span><span class='val'>" + deviceIp + "</span>";
+      "<span class='label'>送信先デバイス:</span>" +
+      "<a class='val' href='http://" + deviceIp + "' target='_blank' rel='noopener'>" + deviceIp + "</a>";
   })();
 
   // ---- 地図（中心がレティクル＝選択地点） ----
@@ -236,13 +237,13 @@
     const url = buildSaveUrl();
     // HTTPSページからの fetch/img 等の背景送信は Mixed Content でブロックされる。
     // このページは遷移させず、別タブで本体の /save を開く（トップレベル遷移は許可される）。
-    // 本体の確認ページは自動で閉じるため、別タブは一瞬表示されてすぐ閉じる。
+    // /save は保存後に本体の状態ページ(/)へリダイレクトするので、別タブが本体ページになる。
     const w = window.open(url, "_blank");
     if (!w) {  // ポップアップがブロックされた場合は現在タブで遷移にフォールバック
       window.location.href = url;
       return;
     }
-    showStatus("ok", "本体へ送信しました。本体が再起動して反映します（数十秒）。");
+    showStatus("ok", "本体へ送信しました。開いたタブに本体ページが表示されます。");
   });
 
   function showStatus(type, msg){

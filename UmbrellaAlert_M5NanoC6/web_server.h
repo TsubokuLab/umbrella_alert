@@ -159,7 +159,7 @@ void startWebServer() {
             String s = "<h1>☂️ " + String(APP_TITLE) + "</h1>";
             s += "<label style='display:block;margin-bottom:8px;font-weight:bold;color:#374151;'>✅ 稼働中</label>";
             s += "<div class='info'>";
-            s += "本体名: <a href='http://" + g_mdnsHost + ".local' style='color:#1d4ed8;word-break:break-all;'><strong>http://" + g_mdnsHost + ".local</strong></a><br>";
+            s += "本体名: <a href='http://" + g_mdnsHost + ".local' style='color:#1d4ed8;word-break:break-all;'><strong>" + g_mdnsHost + ".local</strong></a><br>";
             s += "WiFi: <strong>" + WiFi.SSID() + "</strong><br>";
             s += "IP: <strong>" + WiFi.localIP().toString() + "</strong><br>";
             s += "現在の場所: <strong id='placeNow'>" + getLocationName() + "</strong><br>";
@@ -263,14 +263,11 @@ void startWebServer() {
                           lat.c_str(), lon.c_str(), name.c_str(), tz);
             setCustomLocation(lat, lon, name, tz);
 
-            String disp = name.length() > 0 ? name : (lat + ", " + lon);
-            String s = "<h1>✅ 保存しました</h1>";
-            s += "<div class='success'>場所を保存しました: <strong>" + disp + "</strong><br>";
-            s += "新しい場所で天気を取得しました。このタブは自動で閉じます。</div>";
-            s += "<script>setTimeout(function(){window.close();},1500);</script>";
+            // 保存完了ページは出さず、本体の状態ページ(/)へリダイレクトして直接戻す
             webServer.sendHeader("Access-Control-Allow-Origin", "*");
             webServer.sendHeader("Cache-Control", "no-store");
-            webServer.send(200, "text/html", makePage("保存完了", s));
+            webServer.sendHeader("Location", "/");
+            webServer.send(303, "text/plain", "");
             reloadWeatherApi();  // 再起動せずに即時反映
         });
     }
