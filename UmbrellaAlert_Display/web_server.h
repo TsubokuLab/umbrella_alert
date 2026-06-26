@@ -35,6 +35,12 @@ extern void setCustomLocation(const String& lat, const String& lon, const String
 extern int    getNotifyHours();
 extern void   setNotifyHours(int h);
 extern String notifyHoursOptionsHtml();
+// 場所選択（settings.hで定義。前方宣言）
+extern String getLocationName();
+extern String prefOptionsHtml();
+extern String currentPrefValue();
+extern void   setPrefecture(int idx);
+extern void   applyCustomSlot();
 extern String g_apSsid;     // 個体固有のAP SSID
 extern String g_mdnsHost;   // 個体固有のmDNSホスト名（小文字、.local無し）
 
@@ -69,126 +75,141 @@ String urlDecode(String input) {
 
 // ==== Webサーバー機能の実装 ====
 
+// 設定モードのWiFi設定ページ（1画面）。キャプティブポータルが直接これを表示する。
+String wifiSetupHtml() {
+    String s = "<h1>☂️ " + String(APP_TITLE) + "</h1>";
+    s += "<div class='info'>この本体: <strong>" + g_apSsid + "</strong>（" + g_mdnsHost + ".local）<br>";
+    s += "接続するWi-Fiを選んでパスワードを入力してください</div>";
+    s += "<form method='get' action='setap'>";
+    s += "<div style='display:flex;align-items:center;gap:10px;margin-bottom:8px;'>";
+    s += "<label style='font-weight:bold;color:#374151;flex:1;'>ネットワークを選択:</label>";
+    s += "<button type='button' onclick='refreshNetworks()' class='btn' style='width:auto;padding:8px 16px;margin:0;font-size:14px;'>🔄 更新</button>";
+    s += "</div>";
+    s += "<select id='networkSelect' name='ssid' style='margin-bottom:20px;'>" + ssidList + "</select>";
+    s += "<label style='display:block;margin-bottom:8px;font-weight:bold;color:#374151;'>パスワード:</label>";
+    s += "<input name='pass' type='password' placeholder='ネットワークパスワードを入力' maxlength='64'>";
+
+    // 保存後の場所設定の案内（先に本体URLをコピーさせる）
+    String localUrl = "http://" + g_mdnsHost + ".local";
+    s += "<div class='howto'>";
+    s += "<div class='howto-title'>📍 保存後の場所設定（先にURLをコピー）</div>";
+    s += "<ol>";
+    s += "<li>下の本体URLを<b>コピー</b>する</li>";
+    s += "<li>「🛜 接続設定を保存」を押す（本体が再起動）</li>";
+    s += "<li>スマホを<b>自宅のWi-Fi</b>に接続し直す</li>";
+    s += "<li>コピーしたURLを開いて<b>場所を設定</b>する</li>";
+    s += "</ol>";
+    s += "<div class='urlrow'><span class='u' id='localurl'>" + localUrl + "</span>";
+    s += "<button type='button' class='btn-sm' onclick='copyUrl()'>📋 コピー</button></div>";
+    s += "<div id='copied' style='display:none;color:#166534;font-size:13px;margin:4px 0 0;'>コピーしました</div>";
+    s += "</div>";
+
+    s += "<button type='submit' class='btn'>🛜 接続設定を保存</button></form>";
+    s += "<script>function refreshNetworks(){var btn=event.target;btn.innerHTML='更新中...';btn.disabled=true;";
+    s += "fetch('/refresh-networks').then(r=>r.json()).then(d=>{document.getElementById('networkSelect').innerHTML=d.networks;btn.innerHTML='🔄 更新';btn.disabled=false;})";
+    s += ".catch(e=>{btn.innerHTML='🔄 更新';btn.disabled=false;alert('更新に失敗しました');});}";
+    s += "function copyUrl(){var t=document.getElementById('localurl').textContent;";
+    s += "if(navigator.clipboard){navigator.clipboard.writeText(t).then(show).catch(function(){fb(t);});}else{fb(t);}";
+    s += "function fb(x){var ta=document.createElement('textarea');ta.value=x;ta.style.position='fixed';ta.style.opacity='0';";
+    s += "document.body.appendChild(ta);ta.select();try{document.execCommand('copy');show();}catch(e){}document.body.removeChild(ta);}";
+    s += "function show(){document.getElementById('copied').style.display='block';}}</script>";
+    return makePage("WiFi設定", s);
+}
+
 // Webサーバー開始関数（モードに応じたルート設定）
 void startWebServer() {
     if (deviceMode == SETUP_MODE) {
         // 設定モード: アクセスポイントモード
         Serial.print("Webサーバー開始: ");
         Serial.println(WiFi.softAPIP());
-
         dnsServer.start(DNS_SERVER_PORT, "*", WiFi.softAPIP());
-        
-        // WiFi設定ページ
-        webServer.on("/settings", []() {
-            String s = "<h1>📶 WiFi設定</h1>";
-            s += "<div class='info'>利用可能なネットワークを選択してパスワードを入力してください</div>";
-            s += "<form method='get' action='setap'>";
-            s += "<div style='display:flex;align-items:center;gap:10px;margin-bottom:8px;'>";
-            s += "<label style='font-weight:bold;color:#374151;flex:1;'>ネットワークを選択:</label>";
-            s += "<button type='button' onclick='refreshNetworks()' class='btn' style='width:auto;padding:8px 16px;margin:0;font-size:14px;'>🔄 更新</button>";
-            s += "</div>";
-            s += "<select id='networkSelect' name='ssid' style='margin-bottom:20px;'>" + ssidList + "</select>";
-            s += "<label style='display:block;margin-bottom:8px;font-weight:bold;color:#374151;'>パスワード:</label>";
-            s += "<input name='pass' type='password' placeholder='ネットワークパスワードを入力' maxlength='64'>";
-            s += "<button type='submit' class='btn'>🔗 接続設定を保存</button></form>";
-            
-            // JavaScriptでAjax更新機能を追加
-            s += "<script>";
-            s += "function refreshNetworks() {";
-            s += "  var btn = event.target;";
-            s += "  btn.innerHTML = '更新中...';";
-            s += "  btn.disabled = true;";
-            s += "  fetch('/refresh-networks')";
-            s += "    .then(response => response.json())";
-            s += "    .then(data => {";
-            s += "      var select = document.getElementById('networkSelect');";
-            s += "      select.innerHTML = data.networks;";
-            s += "      btn.innerHTML = '🔄 更新';";
-            s += "      btn.disabled = false;";
-            s += "      console.log('ネットワークリストを更新しました');";
-            s += "    })";
-            s += "    .catch(error => {";
-            s += "      console.error('エラー:', error);";
-            s += "      btn.innerHTML = '🔄 更新';";
-            s += "      btn.disabled = false;";
-            s += "      alert('ネットワークリストの更新に失敗しました');";
-            s += "    });";
-            s += "}";
-            s += "</script>";
-            
-            webServer.send(200, "text/html", makePage("WiFi設定", s));
-        });
-        
+
+        // キャプティブポータルは未知のURLを叩くので onNotFound で直接WiFi設定画面を出す（1画面）
+        webServer.onNotFound([]() { webServer.send(200, "text/html", wifiSetupHtml()); });
+        webServer.on("/settings", []() { webServer.send(200, "text/html", wifiSetupHtml()); });
+
         // ネットワークリスト更新処理（Ajax対応）
         webServer.on("/refresh-networks", []() {
-            Serial.println("🔄 ネットワークリストの更新リクエストを受信");
-            
-            // ネットワークリストを更新
             updateNetworkList();
-            
-            // HTMLタグをJSON用にエスケープ
-            String escapedSSIDList = ssidList;
-            escapedSSIDList.replace("\\", "\\\\");  // バックスラッシュをエスケープ
-            escapedSSIDList.replace("\"", "\\\"");    // ダブルクォートをエスケープ
-            
-            // JSONレスポンスを返す
-            String jsonResponse = "{\"networks\":\"" + escapedSSIDList + "\",\"count\":" + String(networkCount) + "}";
-            webServer.send(200, "application/json", jsonResponse);
-            
-            Serial.println("✅ ネットワークリスト更新完了");
+            String escaped = ssidList;
+            escaped.replace("\\", "\\\\");
+            escaped.replace("\"", "\\\"");
+            webServer.send(200, "application/json",
+                           "{\"networks\":\"" + escaped + "\",\"count\":" + String(networkCount) + "}");
         });
-        
-        // 設定保存処理
+
+        // 設定保存処理 → 再起動。完了画面は本体URLのコピー導線つき。
         webServer.on("/setap", []() {
             String ssid = urlDecode(webServer.arg("ssid"));
             String pass = urlDecode(webServer.arg("pass"));
-            
             Serial.printf("SSID: %s\n", ssid.c_str());
-            Serial.printf("パスワード設定完了\n");
-            
+
             preferences.begin("wifi-config", false);
             preferences.putString("WIFI_SSID", ssid);
             preferences.putString("WIFI_PASSWD", pass);
             preferences.end();
-            
-            String s = "<h1>✅ 設定完了</h1>";
-            s += "<div class='success'>WiFi設定が保存されました。<br>デバイスが自動的に再起動され接続を開始します。</div>";
-            s += "<script>setTimeout(function(){document.body.innerHTML='<div style=\"text-align:center;padding:50px;background:white;border-radius:20px;\"><h2>🔄 再起動中...</h2><p>しばらくお待ちください</p></div><button type='button' id='close' class='btn'>❌ 閉じる</button>';}, 2000);</script>";
-            s += "<script>const closeBtn = document.getElementById('close');closeBtn.addEventListener('click', function () {  window.close(); });</script>";
+
+            String localUrl = "http://" + g_mdnsHost + ".local";
+            String s = "<h1>✅ WiFi設定完了</h1>";
+            s += "<div class='success'>この本体（<strong>" + g_mdnsHost + ".local</strong>）が再起動して接続します。</div>";
+            s += "<div class='howto'>";
+            s += "<div class='howto-title'>📍 次に：場所の設定</div>";
+            s += "<ol>";
+            s += "<li>下の本体URLを<b>コピー</b>する</li>";
+            s += "<li>スマホを<b>自宅のWi-Fi</b>に接続し直す</li>";
+            s += "<li>コピーしたURLを開いて<b>場所を設定</b>する</li>";
+            s += "</ol>";
+            s += "<div class='urlrow'><span class='u' id='localurl'>" + localUrl + "</span>";
+            s += "<button type='button' class='btn-sm' onclick='copyUrl()'>📋 コピー</button></div>";
+            s += "<div id='copied' style='display:none;color:#166534;font-size:13px;margin:4px 0 0;'>コピーしました</div>";
+            s += "</div>";
+            s += "<a href='" + localUrl + "' class='btn' target='_blank' rel='noopener'>🔗 本体URLを開く</a>";
+            s += "<script>function copyUrl(){var t=document.getElementById('localurl').textContent;";
+            s += "if(navigator.clipboard){navigator.clipboard.writeText(t).then(show).catch(function(){fb(t);});}else{fb(t);}";
+            s += "function fb(x){var ta=document.createElement('textarea');ta.value=x;ta.style.position='fixed';ta.style.opacity='0';";
+            s += "document.body.appendChild(ta);ta.select();try{document.execCommand('copy');show();}catch(e){}document.body.removeChild(ta);}";
+            s += "function show(){document.getElementById('copied').style.display='block';}}</script>";
             webServer.send(200, "text/html", makePage("設定完了", s));
             delay(2000);
             ESP.restart();
-        });
-        
-        // メインページ（設定モード）- キャプティブポータル対応
-        webServer.onNotFound([]() {
-            String s = "<h1>📱 " + String(APP_TITLE) + "</h1>";
-            s += "<div class='info'>";
-            s += "WiFi接続設定を開始します。<br>";
-            s += "アクセスポイント名: <strong>" + g_apSsid + "</strong><br>";
-            s += "設定用IP: <strong>" + WiFi.softAPIP().toString() + "</strong>";
-            s += "</div>";
-            s += "<a href='/settings' class='btn'>⚙️ WiFi設定を開始</a>";
-            webServer.send(200, "text/html", makePage("セットアップ", s));
         });
     } else {
         // 通常モード: WiFi接続済み
         Serial.print("Webサーバー開始: ");
         Serial.println(WiFi.localIP());
         
-        // ステータスページ（通常モード）
+        // ステータスページ（通常モード）。場所選択＋雨の通知をAjaxで保存（ページ遷移なし）。
         webServer.on("/", []() {
             String s = "<h1>☂️ " + String(APP_TITLE) + "</h1>";
             s += "<label style='display:block;margin-bottom:8px;font-weight:bold;color:#374151;'>✅ 稼働中</label>";
             s += "<div class='info'>";
             s += "本体名: <a href='http://" + g_mdnsHost + ".local' style='color:#1d4ed8;word-break:break-all;'><strong>" + g_mdnsHost + ".local</strong></a><br>";
-            s += "WiFiネットワーク: <strong>" + WiFi.SSID() + "</strong><br>";
-            s += "IPアドレス: <strong>" + WiFi.localIP().toString() + "</strong><br>";
+            s += "WiFi: <strong>" + WiFi.SSID() + "</strong><br>";
+            s += "IP: <strong>" + WiFi.localIP().toString() + "</strong><br>";
             s += "信号強度: <strong>" + String(WiFi.RSSI()) + " dBm</strong><br>";
-            s += "稼働時間: <strong>" + String(millis() / 1000) + " 秒</strong><br>";
+            s += "現在の場所: <strong id='placeNow'>" + getLocationName() + "</strong><br>";
+            s += "稼働: <strong id='uptime'>-</strong>";
+            s += "</div>";
+            // 稼働秒数を起点に、JS側で毎秒リアルタイムにカウントアップ表示（日/時/分/秒）
+            s += "<script>var up=" + String(millis() / 1000) + ";";
+            s += "function fmt(t){var d=Math.floor(t/86400),h=Math.floor(t%86400/3600),m=Math.floor(t%3600/60),s=t%60;";
+            s += "var r='';if(d)r+=d+'日';if(d||h)r+=h+'時間';if(d||h||m)r+=m+'分';r+=s+'秒';return r;}";
+            s += "function tick(){document.getElementById('uptime').textContent=fmt(up);up++;}";
+            s += "tick();setInterval(tick,1000);</script>";
+
+            // 場所の設定（都道府県プリセット）。保存はAjaxでページ遷移なし。
+            s += "<label style='display:block;margin-bottom:8px;font-weight:bold;color:#374151;'>📍 場所の設定</label>";
+            s += "<label style='display:block;margin-bottom:8px;font-weight:bold;color:#374151;'>都道府県から選ぶ:</label>";
+            s += "<div style='display:flex;align-items:center;gap:8px;margin-bottom:12px;'>";
+            s += "<select id='prefSel' onchange='onPrefChange()' style='flex:1;min-width:0;margin:0;'>" + prefOptionsHtml() + "</select>";
+            s += "<button type='button' id='prefBtn' class='btn' disabled onclick='savePref()' style='width:auto;flex:none;margin:0;'>📍 場所を保存</button>";
             s += "</div>";
 
-            // 雨の通知（直近何時間先までの予報で判定するか）。保存はAjaxでページ遷移なし。
+            // さらに細かく地図で（外部の地図ページ）
+            String setupUrl = String(SETUP_PAGE_URL) + "?ip=" + g_mdnsHost + ".local";
+            s += "<a href='" + setupUrl + "' class='btn secondary'>🗺 地図から指定する</a>";
+
+            // 雨の通知
             s += "<label style='display:block;margin:18px 0 8px;font-weight:bold;color:#374151;'>🌧️ 雨の通知</label>";
             s += "<div style='display:flex;align-items:center;gap:8px;margin-bottom:12px;'>";
             s += "<select id='nhSel' onchange='onNhChange()' style='width:auto;flex:none;margin:0;'>" + notifyHoursOptionsHtml() + "</select>";
@@ -196,19 +217,39 @@ void startWebServer() {
             s += "</div>";
             s += "<button type='button' id='nhBtn' class='btn' disabled onclick='saveNh()'>💾 変更を保存</button>";
 
-            s += "<a href='/reset' class='btn btn-danger'>🔄 設定をリセット</a>";
-
-            // トースト＋Ajax保存スクリプト（成功でボタンを再びグレーアウト）
+            // トースト＋Ajax保存スクリプト（成功でボタンを再びグレーアウト＋現在地表示も更新）
             s += "<div id='toast' class='toast'></div>";
             s += "<script>";
-            s += "var nhBase='" + String(getNotifyHours()) + "';";
+            s += "var prefBase='" + currentPrefValue() + "',nhBase='" + String(getNotifyHours()) + "';";
+            s += "function onPrefChange(){document.getElementById('prefBtn').disabled=(document.getElementById('prefSel').value==prefBase);}";
             s += "function onNhChange(){document.getElementById('nhBtn').disabled=(document.getElementById('nhSel').value==nhBase);}";
             s += "var _tt;function toast(m,e){var t=document.getElementById('toast');t.textContent=m;t.className='toast show'+(e?' err':'');clearTimeout(_tt);_tt=setTimeout(function(){t.className='toast'+(e?' err':'');},2600);}";
+            s += "function savePref(){var sel=document.getElementById('prefSel'),btn=document.getElementById('prefBtn'),v=sel.value;btn.disabled=true;btn.textContent='保存中...';";
+            s += "fetch('/setpref?ajax=1&pref='+encodeURIComponent(v)).then(function(r){if(!r.ok)throw 0;return r.text();}).then(function(name){prefBase=v;btn.textContent='📍 場所を保存';if(name){document.getElementById('placeNow').textContent=name;}toast('📍 場所を「'+name+'」に更新しました');}).catch(function(){btn.disabled=false;btn.textContent='📍 場所を保存';toast('保存に失敗しました',1);});}";
             s += "function saveNh(){var sel=document.getElementById('nhSel'),btn=document.getElementById('nhBtn'),v=sel.value;btn.disabled=true;btn.textContent='保存中...';";
             s += "fetch('/setnotify?ajax=1&hours='+encodeURIComponent(v)).then(function(r){if(!r.ok)throw 0;}).then(function(){nhBase=v;btn.textContent='💾 変更を保存';toast('🌧️ 雨の通知を更新しました');}).catch(function(){btn.disabled=false;btn.textContent='💾 変更を保存';toast('保存に失敗しました',1);});}";
             s += "</script>";
 
             webServer.send(200, "text/html", makePage("稼働中", s));
+        });
+
+        // 都道府県を選択 → 再起動せずに反映。ajax=1なら新しい場所名を返す（現在地表示更新用）。
+        webServer.on("/setpref", []() {
+            if (webServer.hasArg("pref")) {
+                int idx = webServer.arg("pref").toInt();
+                if (idx < 0) applyCustomSlot();      // -1 = 保存済みカスタムに戻す
+                else         setPrefecture(idx);
+            }
+            webServer.sendHeader("Cache-Control", "no-store");
+            if (webServer.hasArg("ajax")) {
+                webServer.send(200, "text/plain", getLocationName());
+            } else {
+                String s = "<h1>✅ 場所を変更しました</h1>";
+                s += "<div class='success'>「" + getLocationName() + "」に設定しました。新しい場所で天気を取得しました。</div>";
+                s += "<a href='/' class='btn'>← 設定ページに戻る</a>";
+                webServer.send(200, "text/html", makePage("場所変更", s));
+            }
+            reloadWeatherApi();  // 再起動せずに即時反映
         });
 
         // 雨の通知（チェック時間）を変更 → 再起動せずに反映。ajax=1ならテキストのみ返す。

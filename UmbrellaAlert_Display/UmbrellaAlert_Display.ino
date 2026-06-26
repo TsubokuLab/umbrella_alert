@@ -166,6 +166,20 @@ void drawSetupPage(){
     canvas.pushSprite(&M5.Display, 0, 0);
 }
 
+// 稼働時間を「日/時間/分/秒」表記にする（Web側のJS表示と統一）
+String formatUptime(unsigned long sec){
+    unsigned long d = sec / 86400;
+    unsigned long h = (sec % 86400) / 3600;
+    unsigned long m = (sec % 3600) / 60;
+    unsigned long s = sec % 60;
+    String r = "";
+    if (d) r += String(d) + "日";
+    if (d || h) r += String(h) + "時間";
+    if (d || h || m) r += String(m) + "分";
+    r += String(s) + "秒";
+    return r;
+}
+
 // 設定画面の描画（WiFi状態確認・管理）
 void drawSettingsPage(){
     int itemX = 10;
@@ -198,19 +212,19 @@ void drawSettingsPage(){
     itemY += itemHeight;
     canvas.drawString("信号強度: " + String(WiFi.RSSI()) + "dBm", itemX, itemY);
     itemY += itemHeight;
-    canvas.drawString("稼働: " + String(millis() / 1000) + " 秒", itemX, itemY);
+    canvas.drawString("稼働: " + formatUptime(millis() / 1000), itemX, itemY);
     itemY += itemHeight;
     canvas.drawString("IPアドレス: " + WiFi.localIP().toString(), itemX, itemY);
     itemY += itemHeight;
     canvas.drawString("本体名: " + g_mdnsHost + ".local", itemX, itemY);
     itemY += itemHeight * 2;
     
-    // 場所設定ページ（外部GitHub Pages）へのQRコード。?ip=で本体IPを渡す
+    // 本体の設定画面（状態ページ）へのQRコード。ここで場所/通知をスマホから設定できる。
     int qr_x = width - qr_size - spacing;
-    String _setting_url = String(SETUP_PAGE_URL) + "?ip=" + WiFi.localIP().toString();
+    String _setting_url = "http://" + g_mdnsHost + ".local";
     canvas.qrcode(_setting_url, qr_x, height - 40 - qr_size - spacing, qr_size, 5);
     canvas.setTextDatum(TL_DATUM);
-    canvas.drawString("■スマホで場所設定", itemX, itemY);
+    canvas.drawString("■設定画面URL", itemX, itemY);
     itemY += itemHeight;
     // URLは長いのでQRの手前で折り返して描画
     canvas.setFont(&fonts::lgfxJapanGothicP_12);
