@@ -31,6 +31,10 @@ extern void updateNetworkList();
 extern void resetSettings();
 extern void reloadWeatherApi();  // 設定変更を再起動せず即時反映するため
 extern void setCustomLocation(const String& lat, const String& lon, const String& name, long tz);
+// 雨の通知（settings.hで定義。web_server.hがsettings.hより先にincludeされるため前方宣言）
+extern int    getNotifyHours();
+extern void   setNotifyHours(int h);
+extern String notifyHoursOptionsHtml();
 extern String g_apSsid;     // 個体固有のAP SSID
 extern String g_mdnsHost;   // 個体固有のmDNSホスト名（小文字、.local無し）
 
